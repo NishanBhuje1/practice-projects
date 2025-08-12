@@ -1,61 +1,54 @@
 import { useState } from "react";
-import { Menu, X, Heart, ShoppingBag } from "lucide-react";
+import { Menu, X, Heart, ShoppingBag, User } from "lucide-react";
+import { useStore } from "../store/useStore";
+import AuthForm from "./AuthForm"; // import your auth form
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  const { getCartItemCount, toggleCart } = useStore();
+
+  const toggleAuth = () => {
+    setIsAuthOpen((prev) => !prev);
+  };
 
   return (
     <header className="w-full bg-white border-b border-gray-100">
-      {/* Main header */}
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <h1 className="text-2xl font-serif text-gray-900">Goldmark</h1>
+            <h1 className="text-4xl font-serif text-gray-900">Goldmark</h1>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
             <div className="relative group">
-              <button className="text-gray-700 hover:text-gray-900 transition-colors">
+              <button className="text-2xl text-gray-700 hover:text-gray-900 transition-colors">
                 Shop
               </button>
-              <div className="absolute top-full left-0 bg-white shadow-lg border rounded-md py-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <a
-                  href="/rings"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                >
-                  Rings
-                </a>
-                <a
-                  href="/earrings"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                >
-                  Earrings
-                </a>
-                <a
-                  href="/necklaces"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                >
-                  Necklaces
-                </a>
-                <a
-                  href="/bracelets"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                >
-                  Bracelets
-                </a>
+              <div className="absolute top-full left-0 bg-white shadow-lg border rounded-md py-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                {["Rings", "Earrings", "Necklaces", "Bracelets"].map((item) => (
+                  <a
+                    key={item}
+                    href={`/${item.toLowerCase()}`}
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  >
+                    {item}
+                  </a>
+                ))}
               </div>
             </div>
             <a
               href="/our-story"
-              className="text-gray-700 hover:text-gray-900 transition-colors"
+              className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
             >
               Our Story
             </a>
             <a
               href="/contact"
-              className="text-gray-700 hover:text-gray-900 transition-colors"
+              className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
             >
               Contact
             </a>
@@ -66,14 +59,23 @@ const Header = () => {
             <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors">
               <Heart size={20} />
             </button>
-            <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors relative">
+            <button
+              className="p-2 text-gray-700 hover:text-gray-900 transition-colors relative"
+              onClick={toggleCart}
+            >
               <ShoppingBag size={20} />
-              <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
-              </span>
+              {getCartItemCount() > 0 && (
+                <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {getCartItemCount()}
+                </span>
+              )}
             </button>
-
-            {/* Mobile menu button */}
+            <button
+              className="p-2 text-gray-700 hover:text-gray-900 transition-colors relative"
+              onClick={toggleAuth}
+            >
+              <User size={20} />
+            </button>
             <button
               className="md:hidden p-2 text-gray-700 hover:text-gray-900 transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -93,30 +95,15 @@ const Header = () => {
               >
                 Shop
               </a>
-              <a
-                href="/rings"
-                className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
-              >
-                Rings
-              </a>
-              <a
-                href="/earrings"
-                className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
-              >
-                Earrings
-              </a>
-              <a
-                href="/necklaces"
-                className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
-              >
-                Necklaces
-              </a>
-              <a
-                href="/bracelets"
-                className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
-              >
-                Bracelets
-              </a>
+              {["Rings", "Earrings", "Necklaces", "Bracelets"].map((item) => (
+                <a
+                  key={item}
+                  href={`/${item.toLowerCase()}`}
+                  className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
+                >
+                  {item}
+                </a>
+              ))}
               <a
                 href="/our-story"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
@@ -133,6 +120,9 @@ const Header = () => {
           </div>
         )}
       </div>
+
+      {/* Auth Form Modal */}
+      <AuthForm isAuthOpen={isAuthOpen} toggleAuth={toggleAuth} />
     </header>
   );
 };

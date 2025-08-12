@@ -4,6 +4,8 @@ import BestSellers from "./components/BestSellers";
 import Categories from "./components/Categories";
 import InstagramGallery from "./components/InstagramGallery";
 import Footer from "./components/Footer";
+import ShoppingCart from "./components/ShoppingCart";
+
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
       <Categories />
       <InstagramGallery />
       <Footer />
+      <ShoppingCart />
+      
     </div>
   );
 }

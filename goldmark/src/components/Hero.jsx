@@ -5,15 +5,15 @@ const Hero = () => {
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat objext-contain"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('https://ext.same-assets.com/1238728203/2272043755.jpeg')`,
+          backgroundImage: `url('https://i.pinimg.com/1200x/7c/e4/6c/7ce46c91f3702761a0539c415bea0133.jpg')`,
         }}
       ></div>
 
       {/* Content */}
       <div className="relative z-10 text-center text-white px-4">
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-light mb-8 tracking-wide">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-light mb-8 tracking-wide text-white">
           Elegance & Luxury
         </h1>
 
