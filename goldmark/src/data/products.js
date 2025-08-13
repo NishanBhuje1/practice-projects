@@ -1,5 +1,3 @@
-import { Product } from "../store/useStore";
-
 export const products = [
   {
     id: "pearl-stud-earrings",

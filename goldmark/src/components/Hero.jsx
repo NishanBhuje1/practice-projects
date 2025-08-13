@@ -1,6 +1,13 @@
 import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
+  const navigate = useNavigate();
+
+  const handleShopAll = () => {
+    navigate("/products");
+  };
+
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -19,7 +26,10 @@ const Hero = () => {
 
         {/* Shop All Button */}
         <div className="absolute bottom-20 right-20 hidden lg:block">
-          <button className="group bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-900 rounded-full p-6 transition-all duration-300 hover:scale-105">
+          <button
+            onClick={() => navigate("/products")}
+            className="group bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-900 rounded-full p-6 transition-all duration-300 hover:scale-105"
+          >
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium">Shop All</span>
               <ArrowRight
@@ -29,10 +39,11 @@ const Hero = () => {
             </div>
           </button>
         </div>
-
-        {/* Mobile Shop All Button */}
         <div className="lg:hidden mt-8">
-          <button className="bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-900 px-8 py-3 rounded-full transition-all duration-300 hover:scale-105">
+          <button
+            onClick={handleShopAll}
+            className="bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-900 px-8 py-3 rounded-full transition-all duration-300 hover:scale-105"
+          >
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium">Shop All</span>
               <ArrowRight size={16} />

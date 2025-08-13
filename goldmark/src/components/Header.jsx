@@ -19,9 +19,10 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <h1 className="text-4xl font-serif text-gray-900">Goldmark</h1>
+            <a href="/" className="block">
+              <h1 className="text-4xl font-serif text-gray-900">Goldmark</h1>
+            </a>
           </div>
-
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
             <div className="relative group">
@@ -53,7 +54,6 @@ const Header = () => {
               Contact
             </a>
           </nav>
-
           {/* Icons */}
           <div className="flex items-center space-x-4">
             <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors">
