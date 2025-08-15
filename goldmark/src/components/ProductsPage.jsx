@@ -1,5 +1,5 @@
 import { ShoppingBag } from "lucide-react";
-import { products } from "../data/products"; // Ensure path is correct
+import { products } from "../data/products";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import toast from "react-hot-toast";

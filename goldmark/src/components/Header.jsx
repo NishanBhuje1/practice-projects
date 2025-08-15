@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Menu, X, Heart, ShoppingBag, User } from "lucide-react";
 import { useStore } from "../store/useStore";
-import AuthForm from "./AuthForm"; // import your auth form
+import AuthForm from "./AuthForm"; 
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
