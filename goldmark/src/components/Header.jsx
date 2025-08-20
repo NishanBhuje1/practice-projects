@@ -1,16 +1,24 @@
 import { useState } from "react";
 import { Menu, X, Heart, ShoppingBag, User } from "lucide-react";
 import { useStore } from "../store/useStore";
-import AuthForm from "./AuthForm"; 
+import { useNavigate } from "react-router-dom";
+import AuthForm from "./AuthForm";
+import SearchBar from "./SearchBar";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { getCartItemCount, toggleCart } = useStore();
 
   const toggleAuth = () => {
     setIsAuthOpen((prev) => !prev);
+  };
+
+  const handleCategoryClick = (category) => {
+    navigate(`/products?category=${category}`);
+    setIsMenuOpen(false);
   };
 
   return (
@@ -23,24 +31,44 @@ const Header = () => {
               <h1 className="text-4xl font-serif text-gray-900">Goldmark</h1>
             </a>
           </div>
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
+            {/* Categories with Dropdown */}
             <div className="relative group">
-              <button className="text-2xl text-gray-700 hover:text-gray-900 transition-colors">
-                Shop
+              <button
+                className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
+                onClick={() => navigate("/categories")}
+              >
+                Categories
               </button>
               <div className="absolute top-full left-0 bg-white shadow-lg border rounded-md py-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                {["Rings", "Earrings", "Necklaces", "Bracelets"].map((item) => (
-                  <a
+                <a
+                  href="/categories"
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50 font-medium border-b border-gray-100"
+                >
+                  View All Categories
+                </a>
+                {["rings", "earrings", "necklaces", "bracelets"].map((item) => (
+                  <button
                     key={item}
-                    href={`/${item.toLowerCase()}`}
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
+                    onClick={() => handleCategoryClick(item)}
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50"
                   >
-                    {item}
-                  </a>
+                    {item.charAt(0).toUpperCase() + item.slice(1)}
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* Shop Link */}
+            <a
+              href="/products"
+              className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              Shop All
+            </a>
+
             <a
               href="/our-story"
               className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
@@ -54,8 +82,12 @@ const Header = () => {
               Contact
             </a>
           </nav>
-          {/* Icons */}
+
+          {/* Icons with Search */}
           <div className="flex items-center space-x-4">
+            {/* Search Component */}
+            <SearchBar />
+
             <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors">
               <Heart size={20} />
             </button>
@@ -89,30 +121,42 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4">
             <nav className="flex flex-col space-y-4">
-              <a
-                href="/shop"
-                className="text-gray-700 hover:text-gray-900 transition-colors"
+              <button
+                onClick={() => {
+                  navigate("/categories");
+                  setIsMenuOpen(false);
+                }}
+                className="text-left text-gray-700 hover:text-gray-900 transition-colors font-medium"
               >
-                Shop
-              </a>
-              {["Rings", "Earrings", "Necklaces", "Bracelets"].map((item) => (
-                <a
+                Categories
+              </button>
+              {["rings", "earrings", "necklaces", "bracelets"].map((item) => (
+                <button
                   key={item}
-                  href={`/${item.toLowerCase()}`}
-                  className="text-gray-700 hover:text-gray-900 transition-colors pl-4"
+                  onClick={() => handleCategoryClick(item)}
+                  className="text-left text-gray-700 hover:text-gray-900 transition-colors pl-4"
                 >
-                  {item}
-                </a>
+                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                </button>
               ))}
+              <a
+                href="/products"
+                className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Shop All
+              </a>
               <a
                 href="/our-story"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
               >
                 Our Story
               </a>
               <a
                 href="/contact"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
               >
                 Contact
               </a>

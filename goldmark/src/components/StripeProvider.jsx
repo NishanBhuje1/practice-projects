@@ -2,7 +2,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import CheckoutForm from './CheckoutForm';
 
-// Replace with your actual Stripe publishable key
+// Replace with our actual Stripe publishable key
 // For demo purposes, using a test key (this won't process real payments)
 const stripePromise = loadStripe('pk_test_51234567890abcdef');
 

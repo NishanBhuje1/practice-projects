@@ -137,7 +137,9 @@ export const products = [
     description:
       "Timeless solitaire ring featuring a brilliant cut stone in a classic six-prong setting. Perfect for engagements or special occasions.",
     category: "rings",
-    images: ["https://ext.same-assets.com/1238728203/2442032724.jpeg"],
+    images: [
+      "https://www.tigergems.com/cdn/shop/products/IMG_88571ctVstyle4prongsolitairesszoom_442cf960-5156-4585-b6cc-b7b7c0b80972_grande.jpg?v=1643657862",
+    ],
     variants: {
       size: ["4", "5", "6", "7", "8", "9", "10", "11"],
       material: ["14k Gold", "18k Gold", "Platinum"],
@@ -152,7 +154,9 @@ export const products = [
     description:
       "Fine chain necklace perfect for layering or wearing alone. Features our signature clasp design.",
     category: "necklaces",
-    images: ["https://ext.same-assets.com/1238728203/2793049852.jpeg"],
+    images: [
+      "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTOAiOHVTzHXVOz2Ub9zNCePRrRe_TnW8Owcx8If3NRwuAIkynBVsceJffCJosjY-bRfpoQ7fXFM0vV6SA0XJ0pErUHkbztKSGdWtHfDEoUJeteRfeQUJ1B",
+    ],
     variants: {
       size: ['14"', '16"', '18"', '20"'],
       material: ["14k Gold", "18k Gold", "Sterling Silver"],
