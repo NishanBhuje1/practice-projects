@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -16,56 +17,64 @@ const Footer = () => {
       {/* Main Footer Content*/}
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-         {/* Navigation Links */}
+          {/* Navigation Links */}
           <div>
             <ul className="space-y-3">
               <li>
-                <a
-                  href="/account"
+                <Link
+                  to="/account"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   My Account
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/shop"
+                <Link
+                  to="/products"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Shop
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/our-story"
+                <Link
+                  to="/our-story"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Our Story
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/profiles"
+                <Link
+                  to="/profiles"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Customer Profiles
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/contact"
+                <Link
+                  to="/contact"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Contact
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/locations"
+                <Link
+                  to="/locations"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Locations
-                </a>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/admin/dashboard"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Admin Dashboard
+                </Link>
               </li>
             </ul>
           </div>
@@ -74,52 +83,52 @@ const Footer = () => {
           <div>
             <ul className="space-y-3">
               <li>
-                <a
-                  href="/faq"
+                <Link
+                  to="/faq"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   FAQ
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/terms"
+                <Link
+                  to="/terms"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Terms & Conditions
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/shipping"
+                <Link
+                  to="/shipping"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Shipping Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/refund"
+                <Link
+                  to="/refund"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Refund Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/privacy"
+                <Link
+                  to="/privacy"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/accessibility"
+                <Link
+                  to="/accessibility"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Accessibility Statement
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -223,56 +232,64 @@ const Footer = () => {
                 <h4 className="text-white font-medium mb-4">Shop</h4>
                 <ul className="space-y-2 text-sm">
                   <li>
-                    <a
-                      href="/rings"
+                    <Link
+                      to="/products?category=rings"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Rings
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a
-                      href="/earrings"
+                    <Link
+                      to="/products?category=earrings"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Earrings
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a
-                      href="/necklaces"
+                    <Link
+                      to="/products?category=necklaces"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Necklaces
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a
-                      href="/bracelets"
+                    <Link
+                      to="/products?category=bracelets"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Bracelets
-                    </a>
+                    </Link>
                   </li>
                 </ul>
               </div>
               <div>
                 <ul className="space-y-2 text-sm">
                   <li>
-                    <a
-                      href="/our-story"
+                    <Link
+                      to="/our-story"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Our Story
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a
-                      href="/contact"
+                    <Link
+                      to="/contact"
                       className="text-gray-300 hover:text-white transition-colors"
                     >
                       Contact
-                    </a>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/dashboard"
+                      className="text-gray-300 hover:text-white transition-colors"
+                    >
+                      Admin Dashboard
+                    </Link>
                   </li>
                 </ul>
               </div>

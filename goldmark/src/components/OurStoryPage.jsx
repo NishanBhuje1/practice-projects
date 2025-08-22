@@ -8,6 +8,7 @@ import {
   Star,
   Shield,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const OurStoryPage = () => {
   const values = [
@@ -273,20 +274,23 @@ const OurStoryPage = () => {
             journey.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="/categories"
+            <Link
+              to="/" // Changed from /categories to / since Categories is on homepage
               className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-full font-medium hover:from-amber-700 hover:to-orange-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               <span>Explore Collections</span>
               <Sparkles size={20} />
-            </a>
-            <a
-              href="/contact"
-              className="inline-flex items-center space-x-2 border-2 border-white text-white px-8 py-4 rounded-full font-medium hover:bg-white hover:text-gray-900 transition-all duration-300"
-            >
-              <span>Get in Touch</span>
-              <Heart size={20} />
-            </a>
+            </Link>
+
+            {
+              <Link
+                to="/contact"
+                className="inline-flex items-center space-x-2 border-2 border-white text-white px-8 py-4 rounded-full font-medium hover:bg-white hover:text-gray-900 transition-all duration-300"
+              >
+                <span>Get in Touch</span>
+                <Heart size={20} />
+              </Link>
+            }
           </div>
         </div>
       </div>

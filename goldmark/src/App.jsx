@@ -1,4 +1,4 @@
-// Updated App.jsx with admin routes
+// In App.jsx
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import BestSellers from "./components/BestSellers";
@@ -11,14 +11,13 @@ import ProductsPage from "./components/ProductsPage";
 import ProductDetail from "./components/ProductDetail";
 import { Toaster } from "react-hot-toast";
 import OurStoryPage from "./components/OurStoryPage";
-
-// Admin Components
-import AdminDashboard from "./components/AdminDashboard";
+import ContactPage from "./components/ContactPage"; // Import ContactPage
 import {
   AdminProvider,
   ProtectedAdminRoute,
   AdminHeader,
 } from "./components/AdminAuth";
+import AdminDashboard from "./components/AdminDashboard";
 
 function App() {
   return (
@@ -38,7 +37,6 @@ function App() {
   );
 }
 
-// Public App Component (Customer-facing)
 function PublicApp() {
   return (
     <>
@@ -52,7 +50,6 @@ function PublicApp() {
               <Hero />
               <BestSellers />
               <Categories />
-
               <InstagramGallery />
             </>
           }
@@ -60,8 +57,7 @@ function PublicApp() {
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/our-story" element={<OurStoryPage />} />
-
-        {/* Redirect admin access to proper admin route */}
+        <Route path="/contact" element={<ContactPage />} /> {/* Add Contact route */}
         <Route
           path="/admin"
           element={<Navigate to="/admin/dashboard" replace />}
@@ -74,7 +70,6 @@ function PublicApp() {
   );
 }
 
-// Admin App Component
 function AdminApp() {
   return (
     <ProtectedAdminRoute>
@@ -82,7 +77,6 @@ function AdminApp() {
       <Routes>
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
-        {/* Add more admin routes as needed */}
       </Routes>
     </ProtectedAdminRoute>
   );
