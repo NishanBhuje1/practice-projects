@@ -17,7 +17,6 @@ import {
   Upload,
   Loader2,
   AlertCircle,
-  Refresh,
 } from "lucide-react";
 import { useStore } from "../hooks/useStore"; // Adjust path as needed
 
@@ -28,13 +27,19 @@ const Toast = ({ message, type, onClose }) => {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === 'error' ? 'bg-red-500' : 
-                  type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+  const bgColor =
+    type === "error"
+      ? "bg-red-500"
+      : type === "success"
+      ? "bg-green-500"
+      : "bg-blue-500";
 
   return (
-    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2`}>
-      {type === 'error' && <AlertCircle size={20} />}
-      {type === 'success' && <CheckCircle size={20} />}
+    <div
+      className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2`}
+    >
+      {type === "error" && <AlertCircle size={20} />}
+      {type === "success" && <CheckCircle size={20} />}
       <span>{message}</span>
       <button onClick={onClose} className="ml-2">
         <X size={16} />
@@ -45,7 +50,8 @@ const Toast = ({ message, type, onClose }) => {
 
 // Loading spinner component
 const LoadingSpinner = ({ size = "default" }) => {
-  const sizeClass = size === "small" ? "h-4 w-4" : size === "large" ? "h-8 w-8" : "h-5 w-5";
+  const sizeClass =
+    size === "small" ? "h-4 w-4" : size === "large" ? "h-8 w-8" : "h-5 w-5";
   return <Loader2 className={`${sizeClass} animate-spin`} />;
 };
 
@@ -86,7 +92,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       await onSave({
         ...formData,
@@ -94,7 +100,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
         stock: parseInt(formData.stock),
       });
     } catch (error) {
-      console.error('Error saving product:', error);
+      console.error("Error saving product:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -325,7 +331,7 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
       await onStockUpdate(parseInt(stockValue));
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating stock:', error);
+      console.error("Error updating stock:", error);
       setStockValue(product.stock || 10); // Reset on error
     } finally {
       setIsUpdating(false);
@@ -362,7 +368,9 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className="text-sm text-gray-900 capitalize">{product.category}</span>
+        <span className="text-sm text-gray-900 capitalize">
+          {product.category}
+        </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-sm font-medium text-gray-900">
@@ -385,7 +393,11 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
               className="text-green-600 hover:text-green-800 disabled:opacity-50"
               disabled={isUpdating}
             >
-              {isUpdating ? <LoadingSpinner size="small" /> : <CheckCircle size={16} />}
+              {isUpdating ? (
+                <LoadingSpinner size="small" />
+              ) : (
+                <CheckCircle size={16} />
+              )}
             </button>
           </div>
         ) : (
@@ -440,7 +452,7 @@ const AdminDashboard = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    clearError
+    clearError,
   } = useStore();
 
   // Local state
@@ -468,11 +480,14 @@ const AdminDashboard = () => {
       (sum, product) => sum + product.price * (product.stockQuantity || 0),
       0
     ),
-    lowStock: products.filter((product) => (product.stockQuantity || 0) < 5).length,
+    lowStock: products.filter((product) => (product.stockQuantity || 0) < 5)
+      .length,
     outOfStock: products.filter((product) => !product.inStock).length,
-    avgPrice: products.length > 0 
-      ? products.reduce((sum, product) => sum + product.price, 0) / products.length 
-      : 0,
+    avgPrice:
+      products.length > 0
+        ? products.reduce((sum, product) => sum + product.price, 0) /
+          products.length
+        : 0,
   };
 
   // Filter and sort products
@@ -527,7 +542,10 @@ const AdminDashboard = () => {
       setShowAddModal(false);
       setToast({ message: "Product added successfully!", type: "success" });
     } catch (error) {
-      setToast({ message: error.message || "Failed to add product", type: "error" });
+      setToast({
+        message: error.message || "Failed to add product",
+        type: "error",
+      });
     }
   };
 
@@ -538,7 +556,10 @@ const AdminDashboard = () => {
       setSelectedProduct(null);
       setToast({ message: "Product updated successfully!", type: "success" });
     } catch (error) {
-      setToast({ message: error.message || "Failed to update product", type: "error" });
+      setToast({
+        message: error.message || "Failed to update product",
+        type: "error",
+      });
     }
   };
 
@@ -548,7 +569,10 @@ const AdminDashboard = () => {
         await deleteProduct(productId);
         setToast({ message: "Product deleted successfully!", type: "success" });
       } catch (error) {
-        setToast({ message: error.message || "Failed to delete product", type: "error" });
+        setToast({
+          message: error.message || "Failed to delete product",
+          type: "error",
+        });
       }
     }
   };
@@ -558,7 +582,10 @@ const AdminDashboard = () => {
       await updateProduct(productId, { stockQuantity: newStock });
       setToast({ message: "Stock updated successfully!", type: "success" });
     } catch (error) {
-      setToast({ message: error.message || "Failed to update stock", type: "error" });
+      setToast({
+        message: error.message || "Failed to update stock",
+        type: "error",
+      });
       throw error; // Re-throw to let ProductRow handle the error
     }
   };
@@ -624,11 +651,7 @@ const AdminDashboard = () => {
                 className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
                 disabled={productsLoading}
               >
-                {productsLoading ? (
-                  <LoadingSpinner size="small" />
-                ) : (
-                  <Refresh size={16} />
-                )}
+                {productsLoading ? <LoadingSpinner size="small" /> : <></>}
                 <span>Refresh</span>
               </button>
               <button
@@ -870,11 +893,13 @@ const AdminDashboard = () => {
                 <div className="p-4 bg-blue-50 border-b border-blue-200">
                   <div className="flex items-center space-x-2">
                     <LoadingSpinner size="small" />
-                    <span className="text-blue-800 text-sm">Loading products...</span>
+                    <span className="text-blue-800 text-sm">
+                      Loading products...
+                    </span>
                   </div>
                 </div>
               )}
-              
+
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -902,9 +927,12 @@ const AdminDashboard = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                          {searchTerm || selectedCategory !== "All" 
-                            ? "No products match your filters" 
+                        <td
+                          colSpan="6"
+                          className="px-6 py-12 text-center text-gray-500"
+                        >
+                          {searchTerm || selectedCategory !== "All"
+                            ? "No products match your filters"
                             : "No products found"}
                         </td>
                       </tr>
@@ -947,7 +975,11 @@ const AdminDashboard = () => {
                 </div>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {products
-                    .filter((product) => (product.stockQuantity || 0) < 5 && (product.stockQuantity || 0) > 0)
+                    .filter(
+                      (product) =>
+                        (product.stockQuantity || 0) < 5 &&
+                        (product.stockQuantity || 0) > 0
+                    )
                     .map((product) => (
                       <div
                         key={product.id}
@@ -955,7 +987,9 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-center space-x-3">
                           <img
-                            src={product.images?.[0] || "/api/placeholder/400/400"}
+                            src={
+                              product.images?.[0] || "/api/placeholder/400/400"
+                            }
                             alt={product.name}
                             className="w-10 h-10 rounded object-cover"
                           />
@@ -1004,7 +1038,9 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-center space-x-3">
                           <img
-                            src={product.images?.[0] || "/api/placeholder/400/400"}
+                            src={
+                              product.images?.[0] || "/api/placeholder/400/400"
+                            }
                             alt={product.name}
                             className="w-10 h-10 rounded object-cover"
                           />
@@ -1084,7 +1120,8 @@ const AdminDashboard = () => {
                     const count = products.filter(
                       (p) => p.category === category
                     ).length;
-                    const percentage = products.length > 0 ? (count / products.length) * 100 : 0;
+                    const percentage =
+                      products.length > 0 ? (count / products.length) * 100 : 0;
                     return (
                       <div key={category}>
                         <div className="flex justify-between items-center mb-1">
@@ -1134,3 +1171,5 @@ const AdminDashboard = () => {
       )}
     </div>
   );
+};
+export default AdminDashboard;
