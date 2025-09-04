@@ -1,6 +1,6 @@
 import express from "express";
 import Joi from "joi";
-import { query } from "../config/database.js";
+import { query, transaction } from "../config/database.js";
 import {
   authenticateToken,
   requireAdmin,
@@ -97,23 +97,23 @@ router.get("/", optionalAuth, async (req, res) => {
     let paramIndex = 1;
 
     if (category) {
-      conditions.push(`c.slug = ${paramIndex++}`);
+      conditions.push(`c.slug = $${paramIndex++}`);
       values.push(category);
     }
 
     if (featured === "true") {
-      conditions.push(`p.is_featured = ${paramIndex++}`);
+      conditions.push(`p.is_featured = $${paramIndex++}`);
       values.push(true);
     }
 
     if (inStock === "true") {
-      conditions.push(`p.stock_quantity > ${paramIndex++}`);
+      conditions.push(`p.stock_quantity > $${paramIndex++}`);
       values.push(0);
     }
 
     if (search) {
       conditions.push(
-        `(p.name ILIKE ${paramIndex++} OR p.description ILIKE ${paramIndex++})`
+        `(p.name ILIKE $${paramIndex++} OR p.description ILIKE $${paramIndex++})`
       );
       values.push(`%${search}%`, `%${search}%`);
       paramIndex++;
@@ -151,7 +151,7 @@ router.get("/", optionalAuth, async (req, res) => {
       JOIN categories c ON p.category_id = c.id
       WHERE ${conditions.join(" AND ")}
       ORDER BY p.${sortField} ${sortOrder}
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `,
       [...values, parseInt(limit), offset]
     );
@@ -222,7 +222,7 @@ router.get("/:identifier", optionalAuth, async (req, res) => {
       FROM products p
       JOIN categories c ON p.category_id = c.id
       WHERE p.category_id = (SELECT category_id FROM products WHERE ${field} = $1)
-        AND p.id != (SELECT id FROM products WHERE ${field} = $1)
+        AND p.id != (SELECT id FROM products WHERE ${field} = $2)
         AND p.is_active = true
       ORDER BY p.is_featured DESC, RANDOM()
       LIMIT 4
@@ -299,7 +299,7 @@ router.get("/search/:term", optionalAuth, async (req, res) => {
     conditions.push(`(p.name ILIKE $1 OR p.description ILIKE $2)`);
 
     if (category) {
-      conditions.push(`c.slug = ${paramIndex++}`);
+      conditions.push(`c.slug = $${paramIndex++}`);
       values.push(category);
     }
 
@@ -319,7 +319,7 @@ router.get("/search/:term", optionalAuth, async (req, res) => {
       JOIN categories c ON p.category_id = c.id
       WHERE ${conditions.join(" AND ")}
       ORDER BY ${orderBy}
-      LIMIT ${paramIndex}
+      LIMIT $${paramIndex}
     `,
       [...values, parseInt(limit)]
     );
@@ -516,7 +516,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
             ? "is_active"
             : key.replace(/([A-Z])/g, "_$1").toLowerCase();
 
-        updates.push(`${dbField} = ${updateIndex++}`);
+        updates.push(`${dbField} = $${updateIndex++}`);
         updateValues.push(val);
       }
 
@@ -526,7 +526,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
           `
           UPDATE products 
           SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${updateIndex}
+          WHERE id = $${updateIndex}
         `,
           updateValues
         );

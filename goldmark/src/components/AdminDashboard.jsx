@@ -15,8 +15,39 @@ import {
   CheckCircle,
   X,
   Upload,
+  Loader2,
+  AlertCircle,
+  Refresh,
 } from "lucide-react";
-import { products as initialProducts } from "../data/products";
+import { useStore } from "../hooks/useStore"; // Adjust path as needed
+
+// Toast notification component for feedback
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === 'error' ? 'bg-red-500' : 
+                  type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+
+  return (
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2`}>
+      {type === 'error' && <AlertCircle size={20} />}
+      {type === 'success' && <CheckCircle size={20} />}
+      <span>{message}</span>
+      <button onClick={onClose} className="ml-2">
+        <X size={16} />
+      </button>
+    </div>
+  );
+};
+
+// Loading spinner component
+const LoadingSpinner = ({ size = "default" }) => {
+  const sizeClass = size === "small" ? "h-4 w-4" : size === "large" ? "h-8 w-8" : "h-5 w-5";
+  return <Loader2 className={`${sizeClass} animate-spin`} />;
+};
 
 // ProductModal Component
 const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
@@ -24,13 +55,14 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
     name: "",
     description: "",
     price: "",
-    category: "Rings",
+    category: "rings",
     stock: 10,
     inStock: true,
     images: ["/api/placeholder/400/400"],
   });
 
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -43,7 +75,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
         name: "",
         description: "",
         price: "",
-        category: "Rings",
+        category: "rings",
         stock: 10,
         inStock: true,
         images: ["/api/placeholder/400/400"],
@@ -51,13 +83,21 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
     }
   }, [product]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave({
-      ...formData,
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
-    });
+    setIsSubmitting(true);
+    
+    try {
+      await onSave({
+        ...formData,
+        price: parseFloat(formData.price),
+        stock: parseInt(formData.stock),
+      });
+    } catch (error) {
+      console.error('Error saving product:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const addImage = () => {
@@ -87,6 +127,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
           >
             <X size={24} />
           </button>
@@ -106,6 +147,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                   setFormData({ ...formData, name: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -122,6 +164,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                   setFormData({ ...formData, price: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -137,6 +180,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                 setFormData({ ...formData, description: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+              disabled={isSubmitting}
             />
           </div>
 
@@ -151,11 +195,12 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                   setFormData({ ...formData, category: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                disabled={isSubmitting}
               >
-                <option value="Rings">Rings</option>
-                <option value="Necklaces">Necklaces</option>
-                <option value="Earrings">Earrings</option>
-                <option value="Bracelets">Bracelets</option>
+                <option value="rings">Rings</option>
+                <option value="necklaces">Necklaces</option>
+                <option value="earrings">Earrings</option>
+                <option value="bracelets">Bracelets</option>
               </select>
             </div>
 
@@ -175,6 +220,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                   })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -187,6 +233,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                     setFormData({ ...formData, inStock: e.target.checked })
                   }
                   className="rounded border-gray-300 text-amber-600 focus:ring-amber-600"
+                  disabled={isSubmitting}
                 />
                 <span className="text-sm font-medium text-gray-700">
                   In Stock
@@ -213,6 +260,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                       type="button"
                       onClick={() => removeImage(index)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      disabled={isSubmitting}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -228,11 +276,13 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                 value={newImageUrl}
                 onChange={(e) => setNewImageUrl(e.target.value)}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
+                disabled={isSubmitting}
               />
               <button
                 type="button"
                 onClick={addImage}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 <Upload size={16} />
               </button>
@@ -243,15 +293,18 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              disabled={isSubmitting}
             >
-              {product ? "Update Product" : "Add Product"}
+              {isSubmitting && <LoadingSpinner size="small" />}
+              <span>{product ? "Update Product" : "Add Product"}</span>
             </button>
           </div>
         </form>
@@ -264,10 +317,19 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
 const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
   const [stockValue, setStockValue] = useState(product.stock || 10);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStockSave = () => {
-    onStockUpdate(parseInt(stockValue));
-    setIsEditing(false);
+  const handleStockSave = async () => {
+    setIsUpdating(true);
+    try {
+      await onStockUpdate(parseInt(stockValue));
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      setStockValue(product.stock || 10); // Reset on error
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const getStockStatus = (stock, inStock) => {
@@ -285,7 +347,7 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <img
-            src={product.images[0]}
+            src={product.images?.[0] || "/api/placeholder/400/400"}
             alt={product.name}
             className="h-12 w-12 rounded-lg object-cover"
           />
@@ -300,7 +362,7 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className="text-sm text-gray-900">{product.category}</span>
+        <span className="text-sm text-gray-900 capitalize">{product.category}</span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-sm font-medium text-gray-900">
@@ -316,12 +378,14 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
               onChange={(e) => setStockValue(e.target.value)}
               className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
               min="0"
+              disabled={isUpdating}
             />
             <button
               onClick={handleStockSave}
-              className="text-green-600 hover:text-green-800"
+              className="text-green-600 hover:text-green-800 disabled:opacity-50"
+              disabled={isUpdating}
             >
-              <CheckCircle size={16} />
+              {isUpdating ? <LoadingSpinner size="small" /> : <CheckCircle size={16} />}
             </button>
           </div>
         ) : (
@@ -365,7 +429,21 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
 
 // Main AdminDashboard Component
 const AdminDashboard = () => {
-  const [products, setProducts] = useState(initialProducts);
+  // Zustand store
+  const {
+    products,
+    productsLoading,
+    productsError,
+    isLoading,
+    error,
+    fetchProducts,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    clearError
+  } = useStore();
+
+  // Local state
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -374,19 +452,27 @@ const AdminDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [toast, setToast] = useState(null);
+
+  // Initialize component
+  useEffect(() => {
+    if (products.length === 0 && !productsLoading) {
+      fetchProducts().catch(console.error);
+    }
+  }, [products, productsLoading, fetchProducts]);
 
   // Calculate dashboard stats
   const stats = {
     totalProducts: products.length,
     totalValue: products.reduce(
-      (sum, product) => sum + product.price * (product.stock || 10),
+      (sum, product) => sum + product.price * (product.stockQuantity || 0),
       0
     ),
-    lowStock: products.filter((product) => (product.stock || 10) < 5).length,
+    lowStock: products.filter((product) => (product.stockQuantity || 0) < 5).length,
     outOfStock: products.filter((product) => !product.inStock).length,
-    avgPrice:
-      products.reduce((sum, product) => sum + product.price, 0) /
-      products.length,
+    avgPrice: products.length > 0 
+      ? products.reduce((sum, product) => sum + product.price, 0) / products.length 
+      : 0,
   };
 
   // Filter and sort products
@@ -411,8 +497,8 @@ const AdminDashboard = () => {
           bValue = b.price;
           break;
         case "stock":
-          aValue = a.stock || 10;
-          bValue = b.stock || 10;
+          aValue = a.stockQuantity || 0;
+          bValue = b.stockQuantity || 0;
           break;
         case "category":
           aValue = a.category.toLowerCase();
@@ -435,40 +521,55 @@ const AdminDashboard = () => {
   ];
 
   // CRUD Operations
-  const addProduct = (newProduct) => {
-    const product = {
-      ...newProduct,
-      id: Math.max(...products.map((p) => p.id)) + 1,
-      images: newProduct.images || ["/api/placeholder/400/400"],
-    };
-    setProducts([...products, product]);
-    setShowAddModal(false);
-  };
-
-  const updateProduct = (updatedProduct) => {
-    setProducts(
-      products.map((product) =>
-        product.id === updatedProduct.id ? updatedProduct : product
-      )
-    );
-    setShowEditModal(false);
-    setSelectedProduct(null);
-  };
-
-  const deleteProduct = (productId) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter((product) => product.id !== productId));
+  const handleAddProduct = async (newProduct) => {
+    try {
+      await addProduct(newProduct);
+      setShowAddModal(false);
+      setToast({ message: "Product added successfully!", type: "success" });
+    } catch (error) {
+      setToast({ message: error.message || "Failed to add product", type: "error" });
     }
   };
 
-  const bulkUpdateStock = (productId, newStock) => {
-    setProducts(
-      products.map((product) =>
-        product.id === productId
-          ? { ...product, stock: newStock, inStock: newStock > 0 }
-          : product
-      )
-    );
+  const handleUpdateProduct = async (updatedProduct) => {
+    try {
+      await updateProduct(selectedProduct.id, updatedProduct);
+      setShowEditModal(false);
+      setSelectedProduct(null);
+      setToast({ message: "Product updated successfully!", type: "success" });
+    } catch (error) {
+      setToast({ message: error.message || "Failed to update product", type: "error" });
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      try {
+        await deleteProduct(productId);
+        setToast({ message: "Product deleted successfully!", type: "success" });
+      } catch (error) {
+        setToast({ message: error.message || "Failed to delete product", type: "error" });
+      }
+    }
+  };
+
+  const handleStockUpdate = async (productId, newStock) => {
+    try {
+      await updateProduct(productId, { stockQuantity: newStock });
+      setToast({ message: "Stock updated successfully!", type: "success" });
+    } catch (error) {
+      setToast({ message: error.message || "Failed to update stock", type: "error" });
+      throw error; // Re-throw to let ProductRow handle the error
+    }
+  };
+
+  const handleRefreshData = async () => {
+    try {
+      await fetchProducts();
+      setToast({ message: "Data refreshed successfully!", type: "success" });
+    } catch (error) {
+      setToast({ message: "Failed to refresh data", type: "error" });
+    }
   };
 
   const exportData = () => {
@@ -482,8 +583,29 @@ const AdminDashboard = () => {
     linkElement.click();
   };
 
+  // Show loading spinner for initial load
+  if (productsLoading && products.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="large" />
+          <p className="mt-4 text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
@@ -496,16 +618,48 @@ const AdminDashboard = () => {
                 Manage your jewelry inventory
               </p>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
-            >
-              <Plus size={16} />
-              <span>Add Product</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleRefreshData}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
+                disabled={productsLoading}
+              >
+                {productsLoading ? (
+                  <LoadingSpinner size="small" />
+                ) : (
+                  <Refresh size={16} />
+                )}
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
+              >
+                <Plus size={16} />
+                <span>Add Product</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Error display */}
+      {(error || productsError) && (
+        <div className="container mx-auto px-4 py-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <div className="flex items-center">
+              <AlertTriangle className="mr-2" size={16} />
+              <span>{error || productsError}</span>
+              <button
+                onClick={clearError}
+                className="ml-auto text-red-500 hover:text-red-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200">
@@ -622,24 +776,28 @@ const AdminDashboard = () => {
                   <div className="flex items-center space-x-3">
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     <span className="text-sm text-gray-600">
-                      Product "Diamond Ring" stock updated to 15
+                      Products loaded from database
                     </span>
-                    <span className="text-xs text-gray-400">2 hours ago</span>
+                    <span className="text-xs text-gray-400">Just now</span>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Plus className="h-5 w-5 text-blue-500" />
-                    <span className="text-sm text-gray-600">
-                      New product "Pearl Necklace" added
-                    </span>
-                    <span className="text-xs text-gray-400">5 hours ago</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm text-gray-600">
-                      Low stock alert for "Gold Bracelet"
-                    </span>
-                    <span className="text-xs text-gray-400">1 day ago</span>
-                  </div>
+                  {stats.lowStock > 0 && (
+                    <div className="flex items-center space-x-3">
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                      <span className="text-sm text-gray-600">
+                        {stats.lowStock} products are running low on stock
+                      </span>
+                      <span className="text-xs text-gray-400">Current</span>
+                    </div>
+                  )}
+                  {stats.outOfStock > 0 && (
+                    <div className="flex items-center space-x-3">
+                      <TrendingDown className="h-5 w-5 text-red-500" />
+                      <span className="text-sm text-gray-600">
+                        {stats.outOfStock} products are out of stock
+                      </span>
+                      <span className="text-xs text-gray-400">Current</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -708,6 +866,15 @@ const AdminDashboard = () => {
 
             {/* Products Table */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
+              {productsLoading && (
+                <div className="p-4 bg-blue-50 border-b border-blue-200">
+                  <div className="flex items-center space-x-2">
+                    <LoadingSpinner size="small" />
+                    <span className="text-blue-800 text-sm">Loading products...</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -733,20 +900,30 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredProducts.map((product) => (
-                      <ProductRow
-                        key={product.id}
-                        product={product}
-                        onEdit={(product) => {
-                          setSelectedProduct(product);
-                          setShowEditModal(true);
-                        }}
-                        onDelete={() => deleteProduct(product.id)}
-                        onStockUpdate={(newStock) =>
-                          bulkUpdateStock(product.id, newStock)
-                        }
-                      />
-                    ))}
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                          {searchTerm || selectedCategory !== "All" 
+                            ? "No products match your filters" 
+                            : "No products found"}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredProducts.map((product) => (
+                        <ProductRow
+                          key={product.id}
+                          product={product}
+                          onEdit={(product) => {
+                            setSelectedProduct(product);
+                            setShowEditModal(true);
+                          }}
+                          onDelete={() => handleDeleteProduct(product.id)}
+                          onStockUpdate={(newStock) =>
+                            handleStockUpdate(product.id, newStock)
+                          }
+                        />
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -765,16 +942,12 @@ const AdminDashboard = () => {
                     Low Stock Alert
                   </h3>
                   <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm font-medium">
-                    {
-                      products.filter((product) => (product.stock || 10) < 5)
-                        .length
-                    }{" "}
-                    items
+                    {stats.lowStock} items
                   </span>
                 </div>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {products
-                    .filter((product) => (product.stock || 10) < 5)
+                    .filter((product) => (product.stockQuantity || 0) < 5 && (product.stockQuantity || 0) > 0)
                     .map((product) => (
                       <div
                         key={product.id}
@@ -782,7 +955,7 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-center space-x-3">
                           <img
-                            src={product.images[0]}
+                            src={product.images?.[0] || "/api/placeholder/400/400"}
                             alt={product.name}
                             className="w-10 h-10 rounded object-cover"
                           />
@@ -791,20 +964,19 @@ const AdminDashboard = () => {
                               {product.name}
                             </p>
                             <p className="text-sm text-gray-600">
-                              {product.stock || 10} left
+                              {product.stockQuantity || 0} left
                             </p>
                           </div>
                         </div>
                         <button
-                          onClick={() => bulkUpdateStock(product.id, 20)}
+                          onClick={() => handleStockUpdate(product.id, 20)}
                           className="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition-colors"
                         >
                           Restock
                         </button>
                       </div>
                     ))}
-                  {products.filter((product) => (product.stock || 10) < 5)
-                    .length === 0 && (
+                  {stats.lowStock === 0 && (
                     <p className="text-gray-500 text-center py-4">
                       No low stock items
                     </p>
@@ -819,8 +991,7 @@ const AdminDashboard = () => {
                     Out of Stock
                   </h3>
                   <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
-                    {products.filter((product) => !product.inStock).length}{" "}
-                    items
+                    {stats.outOfStock} items
                   </span>
                 </div>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -833,7 +1004,7 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-center space-x-3">
                           <img
-                            src={product.images[0]}
+                            src={product.images?.[0] || "/api/placeholder/400/400"}
                             alt={product.name}
                             className="w-10 h-10 rounded object-cover"
                           />
@@ -845,15 +1016,14 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => bulkUpdateStock(product.id, 10)}
+                          onClick={() => handleStockUpdate(product.id, 10)}
                           className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
                         >
                           Restock
                         </button>
                       </div>
                     ))}
-                  {products.filter((product) => !product.inStock).length ===
-                    0 && (
+                  {stats.outOfStock === 0 && (
                     <p className="text-gray-500 text-center py-4">
                       All items in stock
                     </p>
@@ -914,11 +1084,11 @@ const AdminDashboard = () => {
                     const count = products.filter(
                       (p) => p.category === category
                     ).length;
-                    const percentage = (count / products.length) * 100;
+                    const percentage = products.length > 0 ? (count / products.length) * 100 : 0;
                     return (
                       <div key={category}>
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm font-medium text-gray-700">
+                          <span className="text-sm font-medium text-gray-700 capitalize">
                             {category}
                           </span>
                           <span className="text-sm text-gray-600">
@@ -945,7 +1115,7 @@ const AdminDashboard = () => {
         <ProductModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onSave={addProduct}
+          onSave={handleAddProduct}
           title="Add New Product"
         />
       )}
@@ -957,13 +1127,10 @@ const AdminDashboard = () => {
             setShowEditModal(false);
             setSelectedProduct(null);
           }}
-          onSave={updateProduct}
+          onSave={handleUpdateProduct}
           product={selectedProduct}
           title="Edit Product"
         />
       )}
     </div>
   );
-};
-
-export default AdminDashboard;

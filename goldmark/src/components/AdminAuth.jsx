@@ -7,7 +7,7 @@ const AdminContext = createContext();
 export const useAdmin = () => {
   const context = useContext(AdminContext);
   if (!context) {
-    throw new Error('useAdmin must be used within AdminProvider');
+    throw new Error("useAdmin must be used within AdminProvider");
   }
   return context;
 };
@@ -19,26 +19,33 @@ export const AdminProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if admin is already logged in (using localStorage for demo)
-    const adminAuth = localStorage.getItem('goldmark_admin_auth');
-    if (adminAuth === 'authenticated') {
+    const adminAuth = localStorage.getItem("goldmark_admin_auth");
+    if (adminAuth === "authenticated") {
       setIsAuthenticated(true);
     }
     setLoading(false);
   }, []);
 
-  const login = (username, password) => {
-    // Demo credentials - in production, use proper authentication
-    if (username === 'admin@goldmark.com' && password === 'goldmark123') {
+
+  const login = async (username, password) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/admin/login`, {
+        email: username,
+        password,
+      });
+
+      localStorage.setItem("admin_token", response.data.token);
       setIsAuthenticated(true);
-      localStorage.setItem('goldmark_admin_auth', 'authenticated');
       return true;
+    } catch (error) {
+      console.error("Admin login error:", error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem('goldmark_admin_auth');
+    localStorage.removeItem("goldmark_admin_auth");
   };
 
   return (
@@ -50,26 +57,29 @@ export const AdminProvider = ({ children }) => {
 
 // Admin Login Component
 export const AdminLogin = () => {
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [credentials, setCredentials] = useState({
+    username: "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAdmin();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const success = login(credentials.username, credentials.password);
-    
+
     if (!success) {
-      setError('Invalid credentials. Please try again.');
+      setError("Invalid credentials. Please try again.");
     }
-    
+
     setIsLoading(false);
   };
 
@@ -81,8 +91,12 @@ export const AdminLogin = () => {
           <div className="mx-auto h-12 w-12 bg-amber-600 rounded-full flex items-center justify-center">
             <Shield className="h-6 w-6 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-serif text-gray-900">Goldmark Admin</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to manage your jewelry store</p>
+          <h2 className="mt-6 text-3xl font-serif text-gray-900">
+            Goldmark Admin
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Sign in to manage your jewelry store
+          </p>
         </div>
 
         {/* Login Form */}
@@ -102,7 +116,10 @@ export const AdminLogin = () => {
             </div>
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -110,14 +127,19 @@ export const AdminLogin = () => {
                 type="email"
                 required
                 value={credentials.username}
-                onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                onChange={(e) =>
+                  setCredentials({ ...credentials, username: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600"
                 placeholder="admin@goldmark.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -126,7 +148,9 @@ export const AdminLogin = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   value={credentials.password}
-                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                  onChange={(e) =>
+                    setCredentials({ ...credentials, password: e.target.value })
+                  }
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-amber-600"
                   placeholder="Enter your password"
                 />
@@ -151,15 +175,15 @@ export const AdminLogin = () => {
                   <span>Signing in...</span>
                 </div>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
 
           {/* Additional Links */}
           <div className="mt-6 text-center">
-            <a 
-              href="/" 
+            <a
+              href="/"
               className="text-sm text-amber-600 hover:text-amber-700 font-medium"
             >
               ← Back to Store
@@ -203,7 +227,7 @@ export const AdminHeader = () => {
   const { logout } = useAdmin();
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    if (window.confirm("Are you sure you want to logout?")) {
       logout();
     }
   };
@@ -213,12 +237,14 @@ export const AdminHeader = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <a href="/" className="text-2xl font-serif text-gray-900">Goldmark</a>
+            <a href="/" className="text-2xl font-serif text-gray-900">
+              Goldmark
+            </a>
             <span className="text-sm text-gray-500">Admin Panel</span>
           </div>
           <div className="flex items-center space-x-4">
-            <a 
-              href="/" 
+            <a
+              href="/"
               className="text-sm text-gray-600 hover:text-gray-800 transition-colors"
             >
               View Store

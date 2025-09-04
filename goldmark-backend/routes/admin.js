@@ -1,7 +1,7 @@
-import express from 'express';
-import Joi from 'joi';
-import { query, transaction } from '../config/database.js';
-import { requireAdmin } from '../middleware/auth.js';
+import express from "express";
+import Joi from "joi";
+import { query, transaction } from "../config/database.js";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -9,10 +9,10 @@ const router = express.Router();
 router.use(requireAdmin);
 
 // Dashboard analytics
-router.get('/dashboard/analytics', async (req, res) => {
+router.get("/dashboard/analytics", async (req, res) => {
   try {
-    const { period = '30' } = req.query; // days
-    
+    const { period = "30" } = req.query; // days
+
     // Main statistics
     const statsResult = await query(`
       SELECT 
@@ -96,94 +96,104 @@ router.get('/dashboard/analytics', async (req, res) => {
         totalProducts: parseInt(stats.total_products) || 0,
         totalCustomers: parseInt(stats.total_customers) || 0,
         lowStockProducts: parseInt(stats.low_stock_products) || 0,
-        outOfStockProducts: parseInt(stats.out_of_stock_products) || 0
+        outOfStockProducts: parseInt(stats.out_of_stock_products) || 0,
       },
-      ordersByStatus: orderStatusResult.rows.map(row => ({
+      ordersByStatus: orderStatusResult.rows.map((row) => ({
         status: row.status,
         count: parseInt(row.count),
-        revenue: parseFloat(row.revenue)
+        revenue: parseFloat(row.revenue),
       })),
-      dailyRevenue: dailyRevenueResult.rows.map(row => ({
+      dailyRevenue: dailyRevenueResult.rows.map((row) => ({
         date: row.date,
         orders: parseInt(row.orders),
-        revenue: parseFloat(row.revenue)
+        revenue: parseFloat(row.revenue),
       })),
-      topProducts: topProductsResult.rows.map(row => ({
+      topProducts: topProductsResult.rows.map((row) => ({
         name: row.product_name,
         totalSold: parseInt(row.total_sold),
         totalRevenue: parseFloat(row.total_revenue),
-        orderCount: parseInt(row.order_count)
+        orderCount: parseInt(row.order_count),
       })),
-      recentActivity: recentActivityResult.rows.map(row => ({
+      recentActivity: recentActivityResult.rows.map((row) => ({
         type: row.type,
         id: row.id,
         reference: row.reference,
         amount: parseFloat(row.amount),
         status: row.status,
         customerName: row.customer_name,
-        createdAt: row.created_at
-      }))
+        createdAt: row.created_at,
+      })),
     });
-
   } catch (error) {
-    console.error('Admin analytics error:', error);
+    console.error("Admin analytics error:", error);
     res.status(500).json({
-      error: 'Failed to fetch analytics',
-      message: 'Could not retrieve dashboard analytics'
+      error: "Failed to fetch analytics",
+      message: "Could not retrieve dashboard analytics",
     });
   }
 });
 
 // Get all users
-router.get('/users', async (req, res) => {
+router.get("/users", async (req, res) => {
   try {
-    const { 
-      search, 
+    const {
+      search,
       isAdmin,
-      page = 1, 
+      page = 1,
       limit = 20,
-      sortBy = 'created_at',
-      order = 'desc'
+      sortBy = "created_at",
+      order = "desc",
     } = req.query;
 
-    const conditions = ['u.id IS NOT NULL'];
+    const conditions = ["u.id IS NOT NULL"];
     const values = [];
     let paramIndex = 1;
 
     if (search) {
       conditions.push(`(
-        CONCAT(u.first_name, ' ', u.last_name) ILIKE ${paramIndex++} OR 
-        u.email ILIKE ${paramIndex++}
+        CONCAT(u.first_name, ' ', u.last_name) ILIKE $${paramIndex++} OR 
+        u.email ILIKE $${paramIndex++}
       )`);
       values.push(`%${search}%`, `%${search}%`);
       paramIndex++;
     }
 
-    if (isAdmin === 'true') {
-      conditions.push(`u.is_admin = ${paramIndex++}`);
+    if (isAdmin === "true") {
+      conditions.push(`u.is_admin = $${paramIndex++}`);
       values.push(true);
-    } else if (isAdmin === 'false') {
-      conditions.push(`u.is_admin = ${paramIndex++}`);
+    } else if (isAdmin === "false") {
+      conditions.push(`u.is_admin = $${paramIndex++}`);
       values.push(false);
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     // Get total count
-    const countResult = await query(`
+    const countResult = await query(
+      `
       SELECT COUNT(*) FROM users u ${whereClause}
-    `, values);
+    `,
+      values
+    );
 
     const totalUsers = parseInt(countResult.rows[0].count);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Validate sort parameters
-    const allowedSortFields = ['created_at', 'email', 'first_name', 'last_name'];
-    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
-    const sortOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const allowedSortFields = [
+      "created_at",
+      "email",
+      "first_name",
+      "last_name",
+    ];
+    const sortField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "created_at";
+    const sortOrder = order.toLowerCase() === "asc" ? "ASC" : "DESC";
 
     // Get users with order statistics
-    const usersResult = await query(`
+    const usersResult = await query(
+      `
       SELECT 
         u.id, u.email, u.first_name, u.last_name, u.phone, 
         u.is_admin, u.is_active, u.created_at,
@@ -194,10 +204,12 @@ router.get('/users', async (req, res) => {
       ${whereClause}
       GROUP BY u.id, u.email, u.first_name, u.last_name, u.phone, u.is_admin, u.is_active, u.created_at
       ORDER BY u.${sortField} ${sortOrder}
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
-    `, [...values, parseInt(limit), offset]);
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `,
+      [...values, parseInt(limit), offset]
+    );
 
-    const users = usersResult.rows.map(user => ({
+    const users = usersResult.rows.map((user) => ({
       id: user.id,
       email: user.email,
       name: `${user.first_name} ${user.last_name}`,
@@ -208,7 +220,7 @@ router.get('/users', async (req, res) => {
       isActive: user.is_active,
       createdAt: user.created_at,
       totalOrders: parseInt(user.total_orders),
-      totalSpent: parseFloat(user.total_spent)
+      totalSpent: parseFloat(user.total_spent),
     }));
 
     res.json({
@@ -217,21 +229,20 @@ router.get('/users', async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: totalUsers,
-        pages: Math.ceil(totalUsers / parseInt(limit))
-      }
+        pages: Math.ceil(totalUsers / parseInt(limit)),
+      },
     });
-
   } catch (error) {
-    console.error('Users fetch error:', error);
+    console.error("Users fetch error:", error);
     res.status(500).json({
-      error: 'Failed to fetch users',
-      message: 'Could not retrieve users'
+      error: "Failed to fetch users",
+      message: "Could not retrieve users",
     });
   }
 });
 
 // Update user status
-router.patch('/users/:id/status', async (req, res) => {
+router.patch("/users/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive, isAdmin } = req.body;
@@ -240,55 +251,57 @@ router.patch('/users/:id/status', async (req, res) => {
     const values = [];
     let paramIndex = 1;
 
-    if (typeof isActive === 'boolean') {
-      updates.push(`is_active = ${paramIndex++}`);
+    if (typeof isActive === "boolean") {
+      updates.push(`is_active = $${paramIndex++}`);
       values.push(isActive);
     }
 
-    if (typeof isAdmin === 'boolean') {
-      updates.push(`is_admin = ${paramIndex++}`);
+    if (typeof isAdmin === "boolean") {
+      updates.push(`is_admin = $${paramIndex++}`);
       values.push(isAdmin);
     }
 
     if (updates.length === 0) {
       return res.status(400).json({
-        error: 'No updates provided',
-        message: 'Please provide at least one field to update'
+        error: "No updates provided",
+        message: "Please provide at least one field to update",
       });
     }
 
     values.push(id);
 
-    const result = await query(`
+    const result = await query(
+      `
       UPDATE users 
-      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${paramIndex}
+      SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramIndex}
       RETURNING id, email, first_name, last_name, is_admin, is_active
-    `, values);
+    `,
+      values
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
-        error: 'User not found',
-        message: 'The specified user does not exist'
+        error: "User not found",
+        message: "The specified user does not exist",
       });
     }
 
     res.json({
-      message: 'User status updated successfully',
-      user: result.rows[0]
+      message: "User status updated successfully",
+      user: result.rows[0],
     });
-
   } catch (error) {
-    console.error('User status update error:', error);
+    console.error("User status update error:", error);
     res.status(500).json({
-      error: 'Failed to update user status',
-      message: 'Could not update user status'
+      error: "Failed to update user status",
+      message: "Could not update user status",
     });
   }
 });
 
 // Get inventory alerts
-router.get('/inventory/alerts', async (req, res) => {
+router.get("/inventory/alerts", async (req, res) => {
   try {
     // Low stock products (less than 5 items)
     const lowStockResult = await query(`
@@ -317,50 +330,52 @@ router.get('/inventory/alerts', async (req, res) => {
     `);
 
     res.json({
-      lowStock: lowStockResult.rows.map(product => ({
+      lowStock: lowStockResult.rows.map((product) => ({
         id: product.id,
         name: product.name,
         stockQuantity: product.stock_quantity,
         price: parseFloat(product.price),
         imageUrl: product.image_url,
-        categoryName: product.category_name
+        categoryName: product.category_name,
       })),
-      outOfStock: outOfStockResult.rows.map(product => ({
+      outOfStock: outOfStockResult.rows.map((product) => ({
         id: product.id,
         name: product.name,
         stockQuantity: product.stock_quantity,
         price: parseFloat(product.price),
         imageUrl: product.image_url,
-        categoryName: product.category_name
-      }))
+        categoryName: product.category_name,
+      })),
     });
-
   } catch (error) {
-    console.error('Inventory alerts error:', error);
+    console.error("Inventory alerts error:", error);
     res.status(500).json({
-      error: 'Failed to fetch inventory alerts',
-      message: 'Could not retrieve inventory alerts'
+      error: "Failed to fetch inventory alerts",
+      message: "Could not retrieve inventory alerts",
     });
   }
 });
 
 // Bulk update product stock
-router.patch('/inventory/bulk-update', async (req, res) => {
+router.patch("/inventory/bulk-update", async (req, res) => {
   try {
     const bulkUpdateSchema = Joi.object({
-      updates: Joi.array().items(
-        Joi.object({
-          productId: Joi.string().uuid().required(),
-          stockQuantity: Joi.number().integer().min(0).required()
-        })
-      ).min(1).required()
+      updates: Joi.array()
+        .items(
+          Joi.object({
+            productId: Joi.string().uuid().required(),
+            stockQuantity: Joi.number().integer().min(0).required(),
+          })
+        )
+        .min(1)
+        .required(),
     });
 
     const { error, value } = bulkUpdateSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
@@ -368,61 +383,59 @@ router.patch('/inventory/bulk-update', async (req, res) => {
 
     await transaction(async (client) => {
       for (const update of updates) {
-        await client.query(`
+        await client.query(
+          `
           UPDATE products 
           SET stock_quantity = $1, updated_at = CURRENT_TIMESTAMP
           WHERE id = $2 AND is_active = true
-        `, [update.stockQuantity, update.productId]);
+        `,
+          [update.stockQuantity, update.productId]
+        );
       }
     });
 
     res.json({
-      message: `Successfully updated stock for ${updates.length} products`
+      message: `Successfully updated stock for ${updates.length} products`,
     });
-
   } catch (error) {
-    console.error('Bulk stock update error:', error);
+    console.error("Bulk stock update error:", error);
     res.status(500).json({
-      error: 'Failed to update stock',
-      message: 'Could not perform bulk stock update'
+      error: "Failed to update stock",
+      message: "Could not perform bulk stock update",
     });
   }
 });
 
 // Get system logs
-router.get('/logs', async (req, res) => {
+router.get("/logs", async (req, res) => {
   try {
-    const { 
-      type, 
-      page = 1, 
-      limit = 50,
-      startDate,
-      endDate 
-    } = req.query;
+    const { type, page = 1, limit = 50, startDate, endDate } = req.query;
 
     const conditions = [];
     const values = [];
     let paramIndex = 1;
 
-    if (type && type !== 'all') {
-      conditions.push(`action ILIKE ${paramIndex++}`);
+    if (type && type !== "all") {
+      conditions.push(`action ILIKE $${paramIndex++}`);
       values.push(`%${type}%`);
     }
 
     if (startDate) {
-      conditions.push(`created_at >= ${paramIndex++}`);
+      conditions.push(`created_at >= $${paramIndex++}`);
       values.push(startDate);
     }
 
     if (endDate) {
-      conditions.push(`created_at <= ${paramIndex++}`);
+      conditions.push(`created_at <= $${paramIndex++}`);
       values.push(endDate);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const logsResult = await query(`
+    const logsResult = await query(
+      `
       SELECT 
         al.*,
         CONCAT(u.first_name, ' ', u.last_name) as admin_name,
@@ -431,10 +444,12 @@ router.get('/logs', async (req, res) => {
       LEFT JOIN users u ON al.admin_id = u.id
       ${whereClause}
       ORDER BY al.created_at DESC
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
-    `, [...values, parseInt(limit), offset]);
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `,
+      [...values, parseInt(limit), offset]
+    );
 
-    const logs = logsResult.rows.map(log => ({
+    const logs = logsResult.rows.map((log) => ({
       id: log.id,
       action: log.action,
       entityType: log.entity_type,
@@ -444,52 +459,63 @@ router.get('/logs', async (req, res) => {
       oldValues: log.old_values,
       newValues: log.new_values,
       ipAddress: log.ip_address,
-      createdAt: log.created_at
+      createdAt: log.created_at,
     }));
 
     res.json({ logs });
-
   } catch (error) {
-    console.error('Admin logs fetch error:', error);
+    console.error("Admin logs fetch error:", error);
     res.status(500).json({
-      error: 'Failed to fetch logs',
-      message: 'Could not retrieve system logs'
+      error: "Failed to fetch logs",
+      message: "Could not retrieve system logs",
     });
   }
 });
 
 // Log admin action (utility function)
-const logAdminAction = async (adminId, action, entityType = null, entityId = null, oldValues = null, newValues = null, req = null) => {
+const logAdminAction = async (
+  adminId,
+  action,
+  entityType = null,
+  entityId = null,
+  oldValues = null,
+  newValues = null,
+  req = null
+) => {
   try {
-    await query(`
+    await query(
+      `
       INSERT INTO admin_logs (admin_id, action, entity_type, entity_id, old_values, new_values, ip_address, user_agent)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `, [
-      adminId,
-      action,
-      entityType,
-      entityId,
-      oldValues ? JSON.stringify(oldValues) : null,
-      newValues ? JSON.stringify(newValues) : null,
-      req?.ip || null,
-      req?.get('User-Agent') || null
-    ]);
+    `,
+      [
+        adminId,
+        action,
+        entityType,
+        entityId,
+        oldValues ? JSON.stringify(oldValues) : null,
+        newValues ? JSON.stringify(newValues) : null,
+        req?.ip || null,
+        req?.get("User-Agent") || null,
+      ]
+    );
   } catch (error) {
-    console.error('Failed to log admin action:', error);
+    console.error("Failed to log admin action:", error);
   }
 };
 
 // Export reports
-router.get('/reports/export', async (req, res) => {
+router.get("/reports/export", async (req, res) => {
   try {
-    const { type, startDate, endDate, format = 'json' } = req.query;
+    const { type, startDate, endDate, format = "json" } = req.query;
 
     let data = [];
-    let filename = 'goldmark_report';
+    let filename = "goldmark_report";
 
     switch (type) {
-      case 'orders':
-        const ordersResult = await query(`
+      case "orders":
+        const ordersResult = await query(
+          `
           SELECT 
             o.order_number, o.status, o.payment_status, o.total_amount,
             o.created_at, CONCAT(o.shipping_first_name, ' ', o.shipping_last_name) as customer_name,
@@ -499,13 +525,15 @@ router.get('/reports/export', async (req, res) => {
           WHERE ($1::date IS NULL OR o.created_at >= $1::date)
             AND ($2::date IS NULL OR o.created_at <= $2::date)
           ORDER BY o.created_at DESC
-        `, [startDate || null, endDate || null]);
-        
+        `,
+          [startDate || null, endDate || null]
+        );
+
         data = ordersResult.rows;
-        filename = 'orders_report';
+        filename = "orders_report";
         break;
 
-      case 'products':
+      case "products":
         const productsResult = await query(`
           SELECT 
             p.name, p.sku, p.price, p.stock_quantity, p.is_featured,
@@ -515,12 +543,12 @@ router.get('/reports/export', async (req, res) => {
           WHERE p.is_active = true
           ORDER BY p.name
         `);
-        
+
         data = productsResult.rows;
-        filename = 'products_report';
+        filename = "products_report";
         break;
 
-      case 'customers':
+      case "customers":
         const customersResult = await query(`
           SELECT 
             CONCAT(u.first_name, ' ', u.last_name) as name,
@@ -533,46 +561,47 @@ router.get('/reports/export', async (req, res) => {
           GROUP BY u.id, u.first_name, u.last_name, u.email, u.phone, u.created_at
           ORDER BY total_spent DESC
         `);
-        
+
         data = customersResult.rows;
-        filename = 'customers_report';
+        filename = "customers_report";
         break;
 
       default:
         return res.status(400).json({
-          error: 'Invalid report type',
-          message: 'Supported types: orders, products, customers'
+          error: "Invalid report type",
+          message: "Supported types: orders, products, customers",
         });
     }
 
-    if (format === 'csv') {
+    if (format === "csv") {
       // Convert to CSV
       if (data.length === 0) {
         return res.status(404).json({
-          error: 'No data found',
-          message: 'No data available for the specified criteria'
+          error: "No data found",
+          message: "No data available for the specified criteria",
         });
       }
 
       const headers = Object.keys(data[0]);
       const csvContent = [
-        headers.join(','),
-        ...data.map(row => 
-          headers.map(header => 
-            JSON.stringify(row[header] || '')
-          ).join(',')
-        )
-      ].join('\n');
+        headers.join(","),
+        ...data.map((row) =>
+          headers.map((header) => JSON.stringify(row[header] || "")).join(",")
+        ),
+      ].join("\n");
 
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}.csv"`
+      );
       res.send(csvContent);
     } else {
       res.json({
         type,
         generatedAt: new Date().toISOString(),
         totalRecords: data.length,
-        data
+        data,
       });
     }
 
@@ -580,18 +609,17 @@ router.get('/reports/export', async (req, res) => {
     await logAdminAction(
       req.user.id,
       `EXPORT_${type.toUpperCase()}_REPORT`,
-      'report',
+      "report",
       null,
       null,
       { type, format, recordCount: data.length },
       req
     );
-
   } catch (error) {
-    console.error('Report export error:', error);
+    console.error("Report export error:", error);
     res.status(500).json({
-      error: 'Failed to export report',
-      message: 'Could not generate the requested report'
+      error: "Failed to export report",
+      message: "Could not generate the requested report",
     });
   }
 });
