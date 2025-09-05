@@ -1,24 +1,37 @@
 import { useState } from "react";
 import { Menu, X, Heart, ShoppingBag, User } from "lucide-react";
 import { useStore } from "../store/useStore";
-import { useNavigate, Link } from "react-router-dom"; // Import Link
-import AuthForm from "./AuthForm";
+import { useNavigate, Link } from "react-router-dom";
 import SearchBar from "./SearchBar";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+
   const navigate = useNavigate();
 
-  const { getCartItemCount, toggleCart } = useStore();
+  const { cartCount, toggleCart, isAuthenticated, user, logout } = useStore();
 
   const toggleAuth = () => {
-    setIsAuthOpen((prev) => !prev);
+    navigate("/login");
   };
 
   const handleCategoryClick = (category) => {
     navigate(`/products?category=${category}`);
     setIsMenuOpen(false);
+  };
+
+  const handleUserClick = () => {
+    if (isAuthenticated) {
+      navigate("/profile");
+    } else {
+      toggleAuth();
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
   };
 
   return (
@@ -76,13 +89,12 @@ const Header = () => {
               Our Story
             </Link>
 
-            {/* Comment out Contact link until a route is added */}
-            {/* <Link
+            <Link
               to="/contact"
               className="text-2xl text-gray-700 hover:text-gray-900 transition-colors"
             >
               Contact
-            </Link> */}
+            </Link>
           </nav>
 
           {/* Icons with Search */}
@@ -93,23 +105,28 @@ const Header = () => {
             <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors">
               <Heart size={20} />
             </button>
+
+            {/* Cart Icon with Badge */}
             <button
               className="p-2 text-gray-700 hover:text-gray-900 transition-colors relative"
               onClick={toggleCart}
             >
               <ShoppingBag size={20} />
-              {getCartItemCount() > 0 && (
+              {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {getCartItemCount()}
+                  {cartCount}
                 </span>
               )}
             </button>
+
+            {/* User Icon - Direct Click to Profile */}
             <button
               className="p-2 text-gray-700 hover:text-gray-900 transition-colors relative"
-              onClick={toggleAuth}
+              onClick={handleUserClick}
             >
               <User size={20} />
             </button>
+
             <button
               className="md:hidden p-2 text-gray-700 hover:text-gray-900 transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -123,6 +140,40 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4">
             <nav className="flex flex-col space-y-4">
+              {/* User Section for Mobile */}
+              {isAuthenticated && (
+                <div className="border-b border-gray-100 pb-4 mb-4">
+                  <p className="text-sm font-medium text-gray-900 mb-2">
+                    Hello, {user?.firstName}!
+                  </p>
+                  <div className="space-y-2">
+                    <Link
+                      to="/profile"
+                      className="block text-gray-700 hover:text-gray-900 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Profile
+                    </Link>
+                    <Link
+                      to="/profile?tab=orders"
+                      className="block text-gray-700 hover:text-gray-900 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Orders
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="block text-red-600 hover:text-red-700 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <Link
                 to="/"
                 className="text-left text-gray-700 hover:text-gray-900 transition-colors font-medium"
@@ -153,21 +204,30 @@ const Header = () => {
               >
                 Our Story
               </Link>
-              {/* Comment out Contact link until a route is added */}
-              {/* <Link
+              <Link
                 to="/contact"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact
-              </Link> */}
+              </Link>
+
+              {/* Auth button for mobile */}
+              {!isAuthenticated && (
+                <button
+                  onClick={() => {
+                    toggleAuth();
+                    setIsMenuOpen(false);
+                  }}
+                  className="text-left text-amber-600 hover:text-amber-700 transition-colors font-medium"
+                >
+                  Sign In / Register
+                </button>
+              )}
             </nav>
           </div>
         )}
       </div>
-
-      {/* Auth Form Modal */}
-      <AuthForm isAuthOpen={isAuthOpen} toggleAuth={toggleAuth} />
     </header>
   );
 };

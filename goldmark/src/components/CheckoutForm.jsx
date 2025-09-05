@@ -1,77 +1,62 @@
-import { useState } from 'react';
-import { useStripe, useElements, CardElement, PaymentElement } from '@stripe/react-stripe-js';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { X, CreditCard, Truck, Shield } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useState } from "react";
+import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { X, CreditCard, Truck, Shield } from "lucide-react";
+import { useStore } from "../store/useStore";
+import { orderService, cartService } from "../services/supabase";
+import { useNavigate } from "react-router-dom";
 
 // Form validation schema
 const checkoutSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  address: z.string().min(5, 'Please enter a valid address'),
-  city: z.string().min(2, 'Please enter a valid city'),
-  state: z.string().min(2, 'Please enter a valid state'),
-  zipCode: z.string().min(5, 'Please enter a valid zip code'),
-  country: z.string().min(2, 'Please select a country'),
+  email: z.string().email("Please enter a valid email"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  address: z.string().min(5, "Please enter a valid address"),
+  city: z.string().min(2, "Please enter a valid city"),
+  state: z.string().min(2, "Please enter a valid state"),
+  zipCode: z.string().min(5, "Please enter a valid zip code"),
+  country: z.string().min(2, "Please select a country"),
 });
-
-/**
- * @typedef {Object} CheckoutFormData
- * @property {string} email
- * @property {string} firstName
- * @property {string} lastName
- * @property {string} address
- * @property {string} city
- * @property {string} state
- * @property {string} zipCode
- * @property {string} country
- */
-
-/**
- * @typedef {Object} CheckoutFormProps
- * @property {boolean} isOpen
- * @property {() => void} onClose
- */
 
 const CheckoutForm = ({ isOpen, onClose }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentError, setPaymentError] = useState('');
+  const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [orderData, setOrderData] = useState(null);
 
-  const { cart, getCartTotal, clearCart, addOrder, user, setUser } = useStore();
+  const { cartItems, getCartTotal, clearCart, user, isAuthenticated } =
+    useStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch
   } = useForm({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      email: user?.email || '',
-      firstName: user?.name?.split(' ')[0] || '',
-      lastName: user?.name?.split(' ')[1] || '',
-      address: user?.address?.street || '',
-      city: user?.address?.city || '',
-      state: user?.address?.state || '',
-      zipCode: user?.address?.zipCode || '',
-      country: user?.address?.country || 'United States',
-    }
+      email: user?.email || "",
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "United States",
+    },
   });
 
   const cardElementOptions = {
     style: {
       base: {
-        fontSize: '16px',
-        color: '#424770',
-        '::placeholder': {
-          color: '#aab7c4',
+        fontSize: "16px",
+        color: "#424770",
+        "::placeholder": {
+          color: "#aab7c4",
         },
       },
     },
@@ -82,58 +67,63 @@ const CheckoutForm = ({ isOpen, onClose }) => {
       return;
     }
 
+    if (!isAuthenticated) {
+      setPaymentError("Please log in to complete your order");
+      return;
+    }
+
     setIsProcessing(true);
-    setPaymentError('');
+    setPaymentError("");
 
     try {
-      // In a real application, you would:
-      // 1. Send cart data to your backend
-      // 2. Create a payment intent on your server
-      // 3. Return the client secret to the frontend
-      // 4. Confirm the payment with Stripe
-
-      // For demo purposes, we'll simulate a successful payment
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create order
-      const order = {
-        id: `order_${Date.now()}`,
-        userId: user?.id || 'guest',
-        items: [...cart],
-        total: getCartTotal(),
-        status: 'processing',
-        createdAt: new Date(),
-        shippingAddress: {
-          street: data.address,
-          city: data.city,
-          state: data.state,
-          zipCode: data.zipCode,
-          country: data.country,
-        }
+      // Prepare order data
+      const shippingAddress = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        country: data.country,
       };
 
-      // Update user if not exists
-      if (!user) {
-        setUser({
-          id: `user_${Date.now()}`,
-          email: data.email,
-          name: `${data.firstName} ${data.lastName}`,
-          address: {
-            street: data.address,
-            city: data.city,
-            state: data.state,
-            zipCode: data.zipCode,
-            country: data.country,
-          }
-        });
+      const orderItems = cartItems.map((item) => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const subtotal = getCartTotal();
+      const tax = subtotal * 0.08;
+      const totalAmount = subtotal + tax;
+
+      // Create order in Supabase
+      const { order, error: orderError } = await orderService.createOrder({
+        userId: user.id,
+        totalAmount: totalAmount,
+        items: orderItems,
+        shippingAddress: shippingAddress,
+        billingAddress: shippingAddress, // Same as shipping for now
+        paymentMethod: "card",
+      });
+
+      if (orderError) {
+        setPaymentError(orderError);
+        setIsProcessing(false);
+        return;
       }
 
-      addOrder(order);
-      clearCart();
-      setPaymentSuccess(true);
+      // Simulate payment processing (in real app, process with Stripe)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
+      // Update order status to paid
+      await orderService.updateOrderStatus(order.id, "paid");
+
+      setOrderData(order);
+      setPaymentSuccess(true);
     } catch (error) {
-      setPaymentError('Payment failed. Please try again.');
+      console.error("Payment error:", error);
+      setPaymentError("Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -150,16 +140,36 @@ const CheckoutForm = ({ isOpen, onClose }) => {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-serif text-gray-900 mb-2">Order Confirmed!</h2>
-            <p className="text-gray-600 mb-6">
-              Thank you for your purchase. You'll receive a confirmation email shortly.
+            <h2 className="text-2xl font-serif text-gray-900 mb-2">
+              Order Confirmed!
+            </h2>
+            <p className="text-gray-600 mb-2">
+              Thank you for your purchase. Your order #{orderData?.id.slice(-8)}{" "}
+              has been confirmed.
             </p>
-            <button
-              onClick={onClose}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-6 rounded-full transition-colors"
-            >
-              Continue Shopping
-            </button>
+            <p className="text-sm text-gray-500 mb-6">
+              You'll receive a confirmation email shortly.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate("/profile?tab=orders");
+                }}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-6 rounded-full transition-colors"
+              >
+                View Order Details
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate("/");
+                }}
+                className="w-full text-amber-600 hover:text-amber-700 font-medium py-2 transition-colors"
+              >
+                Continue Shopping
+              </button>
+            </div>
           </div>
         </div>
       </>
@@ -189,30 +199,29 @@ const CheckoutForm = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2">
               {/* Order Summary */}
               <div className="p-6 bg-gray-50 border-r border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Order Summary
+                </h3>
 
                 <div className="space-y-4 mb-6">
-                  {cart.map((item) => (
-                    <div key={`${item.product.id}-${JSON.stringify(item.selectedVariants)}`} className="flex space-x-3">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex space-x-3">
                       <img
-                        src={item.product.images[0]}
-                        alt={item.product.name}
+                        src={item.image}
+                        alt={item.name}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.product.name}</h4>
-                        {item.selectedVariants && (
-                          <p className="text-sm text-gray-500">
-                            {item.selectedVariants.size && `Size: ${item.selectedVariants.size}`}
-                            {item.selectedVariants.size && item.selectedVariants.material && ' • '}
-                            {item.selectedVariants.material && `Material: ${item.selectedVariants.material}`}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                        <h4 className="font-medium text-gray-900">
+                          {item.name}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          Qty: {item.quantity}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-gray-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
+                          ${(item.price * item.quantity).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -222,7 +231,9 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">${getCartTotal().toFixed(2)}</span>
+                    <span className="text-gray-900">
+                      ${getCartTotal().toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Shipping</span>
@@ -230,7 +241,9 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                   </div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Tax</span>
-                    <span className="text-gray-900">${(getCartTotal() * 0.08).toFixed(2)}</span>
+                    <span className="text-gray-900">
+                      ${(getCartTotal() * 0.08).toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-lg font-semibold border-t border-gray-200 pt-2">
                     <span>Total</span>
@@ -253,40 +266,67 @@ const CheckoutForm = ({ isOpen, onClose }) => {
 
               {/* Checkout Form */}
               <div className="p-6">
-                <form onSubmit={handleSubmit(handlePayment)} className="space-y-6">
+                {!isAuthenticated && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
+                    <p className="text-amber-800 text-sm">
+                      Please{" "}
+                      <button
+                        onClick={() => navigate("/login")}
+                        className="underline font-medium"
+                      >
+                        log in
+                      </button>{" "}
+                      to complete your order.
+                    </p>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleSubmit(handlePayment)}
+                  className="space-y-6"
+                >
                   {/* Contact Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Contact Information
+                    </h3>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Email Address
                       </label>
                       <input
-                        {...register('email')}
+                        {...register("email")}
                         type="email"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        disabled={isAuthenticated}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-100"
                       />
                       {errors.email && (
-                        <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.email.message}
+                        </p>
                       )}
                     </div>
                   </div>
 
                   {/* Shipping Address */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Shipping Address
+                    </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           First Name
                         </label>
                         <input
-                          {...register('firstName')}
+                          {...register("firstName")}
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                         {errors.firstName && (
-                          <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.firstName.message}
+                          </p>
                         )}
                       </div>
                       <div>
@@ -294,12 +334,14 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           Last Name
                         </label>
                         <input
-                          {...register('lastName')}
+                          {...register("lastName")}
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                         {errors.lastName && (
-                          <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.lastName.message}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -309,12 +351,14 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                         Address
                       </label>
                       <input
-                        {...register('address')}
+                        {...register("address")}
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                       />
                       {errors.address && (
-                        <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.address.message}
+                        </p>
                       )}
                     </div>
 
@@ -324,12 +368,14 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           City
                         </label>
                         <input
-                          {...register('city')}
+                          {...register("city")}
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                         {errors.city && (
-                          <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.city.message}
+                          </p>
                         )}
                       </div>
                       <div>
@@ -337,12 +383,14 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           State
                         </label>
                         <input
-                          {...register('state')}
+                          {...register("state")}
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                         {errors.state && (
-                          <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.state.message}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -353,12 +401,14 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           Zip Code
                         </label>
                         <input
-                          {...register('zipCode')}
+                          {...register("zipCode")}
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                         {errors.zipCode && (
-                          <p className="text-red-500 text-sm mt-1">{errors.zipCode.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.zipCode.message}
+                          </p>
                         )}
                       </div>
                       <div>
@@ -366,7 +416,7 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           Country
                         </label>
                         <select
-                          {...register('country')}
+                          {...register("country")}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         >
                           <option value="United States">United States</option>
@@ -375,7 +425,9 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                           <option value="Australia">Australia</option>
                         </select>
                         {errors.country && (
-                          <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.country.message}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -391,8 +443,9 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                     {/* Demo Payment Notice */}
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
                       <p className="text-blue-800 text-sm">
-                        <strong>Demo Mode:</strong> This is a demonstration. No actual payment will be processed.
-                        Click "Complete Order" to simulate a successful purchase.
+                        <strong>Demo Mode:</strong> This is a demonstration. No
+                        actual payment will be processed. Click "Complete Order"
+                        to simulate a successful purchase.
                       </p>
                     </div>
 
@@ -402,20 +455,26 @@ const CheckoutForm = ({ isOpen, onClose }) => {
                   </div>
 
                   {paymentError && (
-                    <div className="text-red-500 text-sm">{paymentError}</div>
+                    <div className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-md p-3">
+                      {paymentError}
+                    </div>
                   )}
 
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={!stripe || isProcessing}
+                    disabled={!stripe || isProcessing || !isAuthenticated}
                     className={`w-full py-3 px-6 rounded-full font-medium transition-all duration-300 ${
-                      isProcessing
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-amber-600 hover:bg-amber-700 text-white'
+                      isProcessing || !isAuthenticated
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-amber-600 hover:bg-amber-700 text-white"
                     }`}
                   >
-                    {isProcessing ? 'Processing...' : `Complete Order • $${(getCartTotal() * 1.08).toFixed(2)}`}
+                    {isProcessing
+                      ? "Processing..."
+                      : `Complete Order • $${(getCartTotal() * 1.08).toFixed(
+                          2
+                        )}`}
                   </button>
                 </form>
               </div>
