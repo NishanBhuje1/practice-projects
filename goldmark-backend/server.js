@@ -9,6 +9,7 @@ import { dirname, join } from "path";
 // Import routes
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
+import categoriesRoutes from "./routes/categories.js";
 import orderRoutes from "./routes/orders.js";
 import adminRoutes from "./routes/admin.js";
 import paymentRoutes from "./routes/payments.js";
@@ -79,6 +80,7 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/categories", categoriesRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", authenticateToken, adminRoutes);
