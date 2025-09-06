@@ -17,6 +17,7 @@ import {
   Upload,
   Loader2,
   AlertCircle,
+  LogOut,
 } from "lucide-react";
 import { useStore } from "../hooks/useStore"; // Adjust path as needed
 
@@ -53,6 +54,45 @@ const LoadingSpinner = ({ size = "default" }) => {
   const sizeClass =
     size === "small" ? "h-4 w-4" : size === "large" ? "h-8 w-8" : "h-5 w-5";
   return <Loader2 className={`${sizeClass} animate-spin`} />;
+};
+
+// AdminHeader Component
+const AdminHeader = () => {
+  const { logout, setIsAdminAuthenticated } = useStore();
+
+  const handleLogout = async () => {
+    try {
+      await logout(); // Call the store's logout function
+      setIsAdminAuthenticated(false); // Clear admin authentication state
+      window.location.href = "/"; // Force redirect to home
+    } catch (error) {
+      console.error("Admin logout error:", error);
+    }
+  };
+
+  return (
+    <div className="bg-white border-b border-gray-200">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-serif text-gray-900">
+              Goldmark Admin
+            </h1>
+            <p className="text-gray-600 mt-1">Manage your jewelry inventory</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ProductModal Component
@@ -320,8 +360,9 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
 };
 
 // Product Row Component
+// Product Row Component
 const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
-  const [stockValue, setStockValue] = useState(product.stock || 10);
+  const [stockValue, setStockValue] = useState(product.stockQuantity || 10);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -332,7 +373,7 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating stock:", error);
-      setStockValue(product.stock || 10); // Reset on error
+      setStockValue(product.stockQuantity || 10); // Reset on error
     } finally {
       setIsUpdating(false);
     }
@@ -634,37 +675,7 @@ const AdminDashboard = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-serif text-gray-900">
-                Goldmark Admin
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Manage your jewelry inventory
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleRefreshData}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
-                disabled={productsLoading}
-              >
-                {productsLoading ? <LoadingSpinner size="small" /> : <></>}
-                <span>Refresh</span>
-              </button>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus size={16} />
-                <span>Add Product</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminHeader />
 
       {/* Error display */}
       {(error || productsError) && (
@@ -1172,4 +1183,5 @@ const AdminDashboard = () => {
     </div>
   );
 };
+
 export default AdminDashboard;

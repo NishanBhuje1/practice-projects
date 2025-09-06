@@ -34,6 +34,18 @@ const Profile = () => {
     phone: "",
   });
 
+  // Handle logout with proper navigation
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Force navigation to home page
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to sign out");
+    }
+  };
+
   // Load user data on component mount
   useEffect(() => {
     if (user) {
@@ -202,7 +214,7 @@ const Profile = () => {
 
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="w-full text-red-600 hover:text-red-700 text-sm font-medium py-2 transition-colors"
                 >
                   Sign Out
