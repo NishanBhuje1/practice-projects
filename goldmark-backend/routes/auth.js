@@ -1,9 +1,9 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import Joi from 'joi';
-import { query, transaction } from '../config/database.js';
-import { authenticateToken } from '../middleware/auth.js';
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import Joi from "joi";
+import { query, transaction } from "../config/database.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -13,26 +13,25 @@ const registerSchema = Joi.object({
   password: Joi.string().min(6).required(),
   firstName: Joi.string().min(2).max(50).required(),
   lastName: Joi.string().min(2).max(50).required(),
-  phone: Joi.string().optional()
+  phone: Joi.string().optional(),
 });
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
-  password: Joi.string().required()
+  password: Joi.string().required(),
 });
 
 // Helper function to generate JWT
 const generateToken = (userId) => {
-  return jwt.sign(
-    { userId },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
-  );
+  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || "7d",
+  });
 };
 
 // Helper function to get user profile
 const getUserProfile = async (userId) => {
-  const userResult = await query(`
+  const userResult = await query(
+    `
     SELECT 
       u.id, u.email, u.first_name, u.last_name, u.phone, u.is_admin,
       json_agg(
@@ -47,11 +46,13 @@ const getUserProfile = async (userId) => {
           'isDefault', a.is_default
         )
       ) FILTER (WHERE a.id IS NOT NULL) as addresses
-    FROM users u
+    FROM user_profiles u
     LEFT JOIN user_addresses a ON u.id = a.user_id
     WHERE u.id = $1
     GROUP BY u.id
-  `, [userId]);
+  `,
+    [userId]
+  );
 
   if (userResult.rows.length === 0) return null;
 
@@ -64,30 +65,33 @@ const getUserProfile = async (userId) => {
     lastName: user.last_name,
     phone: user.phone,
     isAdmin: user.is_admin,
-    addresses: user.addresses || []
+    addresses: user.addresses || [],
   };
 };
 
 // Register endpoint
-router.post('/register', async (req, res) => {
+router.post("/register", async (req, res) => {
   try {
     // Validate input
     const { error, value } = registerSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
     const { email, password, firstName, lastName, phone } = value;
 
     // Check if user already exists
-    const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingUser = await query(
+      "SELECT id FROM user_profiles WHERE email = $1",
+      [email]
+    );
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
-        error: 'User already exists',
-        message: 'An account with this email already exists'
+        error: "User already exists",
+        message: "An account with this email already exists",
       });
     }
 
@@ -96,11 +100,14 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create user
-    const newUser = await query(`
-      INSERT INTO users (email, password_hash, first_name, last_name, phone)
+    const newUser = await query(
+      `
+      INSERT INTO user_profiles (email, password_hash, first_name, last_name, phone)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id, email, first_name, last_name, phone, is_admin, created_at
-    `, [email, passwordHash, firstName, lastName, phone]);
+    `,
+      [email, passwordHash, firstName, lastName, phone]
+    );
 
     const user = newUser.rows[0];
 
@@ -109,7 +116,7 @@ router.post('/register', async (req, res) => {
 
     // Return user data (without password)
     res.status(201).json({
-      message: 'User registered successfully',
+      message: "User registered successfully",
       token,
       user: {
         id: user.id,
@@ -118,28 +125,27 @@ router.post('/register', async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         phone: user.phone,
-        isAdmin: user.is_admin
-      }
+        isAdmin: user.is_admin,
+      },
     });
-
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     res.status(500).json({
-      error: 'Registration failed',
-      message: 'An error occurred during registration'
+      error: "Registration failed",
+      message: "An error occurred during registration",
     });
   }
 });
 
 // Login endpoint
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     // Validate input
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
@@ -147,14 +153,14 @@ router.post('/login', async (req, res) => {
 
     // Find user
     const userResult = await query(
-      'SELECT id, email, password_hash, first_name, last_name, phone, is_admin, is_active FROM users WHERE email = $1',
+      "SELECT id, email, password_hash, first_name, last_name, phone, is_admin, is_active FROM user_profiles WHERE email = $1",
       [email]
     );
 
     if (userResult.rows.length === 0) {
       return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+        error: "Invalid credentials",
+        message: "Email or password is incorrect",
       });
     }
 
@@ -162,8 +168,8 @@ router.post('/login', async (req, res) => {
 
     if (!user.is_active) {
       return res.status(401).json({
-        error: 'Account disabled',
-        message: 'Your account has been disabled'
+        error: "Account disabled",
+        message: "Your account has been disabled",
       });
     }
 
@@ -171,8 +177,8 @@ router.post('/login', async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+        error: "Invalid credentials",
+        message: "Email or password is incorrect",
       });
     }
 
@@ -183,28 +189,27 @@ router.post('/login', async (req, res) => {
     const userProfile = await getUserProfile(user.id);
 
     res.json({
-      message: 'Login successful',
+      message: "Login successful",
       token,
-      user: userProfile
+      user: userProfile,
     });
-
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     res.status(500).json({
-      error: 'Login failed',
-      message: 'An error occurred during login'
+      error: "Login failed",
+      message: "An error occurred during login",
     });
   }
 });
 
 // Admin login endpoint (separate for admin dashboard)
-router.post('/admin/login', async (req, res) => {
+router.post("/admin/login", async (req, res) => {
   try {
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
@@ -212,14 +217,14 @@ router.post('/admin/login', async (req, res) => {
 
     // Find admin user
     const userResult = await query(
-      'SELECT id, email, password_hash, first_name, last_name, is_admin, is_active FROM users WHERE email = $1 AND is_admin = true',
+      "SELECT id, email, password_hash, first_name, last_name, is_admin, is_active FROM user_profiles WHERE email = $1 AND is_admin = true",
       [email]
     );
 
     if (userResult.rows.length === 0) {
       return res.status(401).json({
-        error: 'Access denied',
-        message: 'Admin credentials required'
+        error: "Access denied",
+        message: "Admin credentials required",
       });
     }
 
@@ -227,8 +232,8 @@ router.post('/admin/login', async (req, res) => {
 
     if (!admin.is_active) {
       return res.status(401).json({
-        error: 'Account disabled',
-        message: 'Admin account has been disabled'
+        error: "Account disabled",
+        message: "Admin account has been disabled",
       });
     }
 
@@ -236,8 +241,8 @@ router.post('/admin/login', async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, admin.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+        error: "Invalid credentials",
+        message: "Email or password is incorrect",
       });
     }
 
@@ -245,61 +250,60 @@ router.post('/admin/login', async (req, res) => {
     const token = generateToken(admin.id);
 
     res.json({
-      message: 'Admin login successful',
+      message: "Admin login successful",
       token,
       user: {
         id: admin.id,
         email: admin.email,
         name: `${admin.first_name} ${admin.last_name}`,
-        isAdmin: admin.is_admin
-      }
+        isAdmin: admin.is_admin,
+      },
     });
-
   } catch (error) {
-    console.error('Admin login error:', error);
+    console.error("Admin login error:", error);
     res.status(500).json({
-      error: 'Login failed',
-      message: 'An error occurred during admin login'
+      error: "Login failed",
+      message: "An error occurred during admin login",
     });
   }
 });
 
 // Get current user profile
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get("/profile", authenticateToken, async (req, res) => {
   try {
     const userProfile = await getUserProfile(req.user.id);
-    
+
     if (!userProfile) {
       return res.status(404).json({
-        error: 'User not found',
-        message: 'User profile could not be retrieved'
+        error: "User not found",
+        message: "User profile could not be retrieved",
       });
     }
 
     res.json({ user: userProfile });
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.error("Profile fetch error:", error);
     res.status(500).json({
-      error: 'Profile fetch failed',
-      message: 'Could not retrieve user profile'
+      error: "Profile fetch failed",
+      message: "Could not retrieve user profile",
     });
   }
 });
 
 // Update user profile
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put("/profile", authenticateToken, async (req, res) => {
   try {
     const updateSchema = Joi.object({
       firstName: Joi.string().min(2).max(50).optional(),
       lastName: Joi.string().min(2).max(50).optional(),
-      phone: Joi.string().optional()
+      phone: Joi.string().optional(),
     });
 
     const { error, value } = updateSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
@@ -322,53 +326,55 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     if (updates.length === 0) {
       return res.status(400).json({
-        error: 'No updates provided',
-        message: 'Please provide at least one field to update'
+        error: "No updates provided",
+        message: "Please provide at least one field to update",
       });
     }
 
     values.push(req.user.id);
 
-    await query(`
-      UPDATE users 
-      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+    await query(
+      `
+      UPDATE user_profiles 
+      SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
       WHERE id = $${paramIndex}
-    `, values);
+    `,
+      values
+    );
 
     const updatedProfile = await getUserProfile(req.user.id);
-    
-    res.json({
-      message: 'Profile updated successfully',
-      user: updatedProfile
-    });
 
+    res.json({
+      message: "Profile updated successfully",
+      user: updatedProfile,
+    });
   } catch (error) {
-    console.error('Profile update error:', error);
+    console.error("Profile update error:", error);
     res.status(500).json({
-      error: 'Profile update failed',
-      message: 'Could not update user profile'
+      error: "Profile update failed",
+      message: "Could not update user profile",
     });
   }
 });
 
 // Add/Update user address
-router.post('/addresses', authenticateToken, async (req, res) => {
+router.post("/addresses", authenticateToken, async (req, res) => {
   try {
     const addressSchema = Joi.object({
-      type: Joi.string().valid('shipping', 'billing').default('shipping'),
+      type: Joi.string().valid("shipping", "billing").default("shipping"),
       street: Joi.string().required(),
       city: Joi.string().required(),
       state: Joi.string().required(),
       zipCode: Joi.string().required(),
       country: Joi.string().required(),
-      isDefault: Joi.boolean().default(false)
+      isDefault: Joi.boolean().default(false),
     });
 
     const { error, value } = addressSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
+        error: "Validation failed",
+        details: error.details.map((d) => d.message),
       });
     }
 
@@ -376,56 +382,64 @@ router.post('/addresses', authenticateToken, async (req, res) => {
       // If this is set as default, remove default from other addresses
       if (value.isDefault) {
         await client.query(
-          'UPDATE user_addresses SET is_default = false WHERE user_id = $1 AND type = $2',
+          "UPDATE user_addresses SET is_default = false WHERE user_id = $1 AND type = $2",
           [req.user.id, value.type]
         );
       }
 
       // Add new address
-      const newAddress = await client.query(`
+      const newAddress = await client.query(
+        `
         INSERT INTO user_addresses (user_id, type, street, city, state, zip_code, country, is_default)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
-      `, [
-        req.user.id, value.type, value.street, value.city, 
-        value.state, value.zipCode, value.country, value.isDefault
-      ]);
+      `,
+        [
+          req.user.id,
+          value.type,
+          value.street,
+          value.city,
+          value.state,
+          value.zipCode,
+          value.country,
+          value.isDefault,
+        ]
+      );
 
       return newAddress.rows[0];
     });
 
     res.status(201).json({
-      message: 'Address added successfully'
+      message: "Address added successfully",
     });
-
   } catch (error) {
-    console.error('Address creation error:', error);
+    console.error("Address creation error:", error);
     res.status(500).json({
-      error: 'Address creation failed',
-      message: 'Could not add address'
+      error: "Address creation failed",
+      message: "Could not add address",
     });
   }
 });
 
 // Verify token endpoint
-router.get('/verify', authenticateToken, async (req, res) => {
+router.get("/verify", authenticateToken, async (req, res) => {
   try {
     const userProfile = await getUserProfile(req.user.id);
-    res.json({ 
-      valid: true, 
-      user: userProfile 
+    res.json({
+      valid: true,
+      user: userProfile,
     });
   } catch (error) {
     res.status(500).json({
-      error: 'Verification failed',
-      message: 'Could not verify token'
+      error: "Verification failed",
+      message: "Could not verify token",
     });
   }
 });
 
 // Logout endpoint (optional - JWT is stateless)
-router.post('/logout', (req, res) => {
-  res.json({ message: 'Logged out successfully' });
+router.post("/logout", (req, res) => {
+  res.json({ message: "Logged out successfully" });
 });
 
 export default router;
