@@ -1,445 +1,451 @@
+// routes/auth.js
 import express from "express";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import Joi from "joi";
-import { query, transaction } from "../config/database.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { query } from "../config/database.js";
 
 const router = express.Router();
 
-// Validation schemas
-const registerSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-  firstName: Joi.string().min(2).max(50).required(),
-  lastName: Joi.string().min(2).max(50).required(),
-  phone: Joi.string().optional(),
-});
+// Middleware to verify JWT token (for protected routes)
+export const verifyToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1]; // Bearer TOKEN
 
-const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().required(),
-});
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
 
-// Helper function to generate JWT
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || "7d",
-  });
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "your-secret-key"
+    );
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
 };
 
-// Helper function to get user profile
-const getUserProfile = async (userId) => {
-  const userResult = await query(
-    `
-    SELECT 
-      u.id, u.email, u.first_name, u.last_name, u.phone, u.is_admin,
-      json_agg(
-        json_build_object(
-          'id', a.id,
-          'type', a.type,
-          'street', a.street,
-          'city', a.city,
-          'state', a.state,
-          'zipCode', a.zip_code,
-          'country', a.country,
-          'isDefault', a.is_default
-        )
-      ) FILTER (WHERE a.id IS NOT NULL) as addresses
-    FROM user_profiles u
-    LEFT JOIN user_addresses a ON u.id = a.user_id
-    WHERE u.id = $1
-    GROUP BY u.id
-  `,
-    [userId]
-  );
-
-  if (userResult.rows.length === 0) return null;
-
-  const user = userResult.rows[0];
-  return {
-    id: user.id,
-    email: user.email,
-    name: `${user.first_name} ${user.last_name}`,
-    firstName: user.first_name,
-    lastName: user.last_name,
-    phone: user.phone,
-    isAdmin: user.is_admin,
-    addresses: user.addresses || [],
-  };
-};
-
-// Register endpoint
+// Registration endpoint
 router.post("/register", async (req, res) => {
+  const { email, username, password, first_name, last_name } = req.body;
+
   try {
     // Validate input
-    const { error, value } = registerSchema.validate(req.body);
-    if (error) {
+    if (!email || !username || !password) {
       return res.status(400).json({
-        error: "Validation failed",
-        details: error.details.map((d) => d.message),
+        error: "Email, username, and password are required",
       });
     }
 
-    const { email, password, firstName, lastName, phone } = value;
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: "Invalid email format",
+      });
+    }
+
+    // Validate password strength (minimum 6 characters)
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
+    }
 
     // Check if user already exists
     const existingUser = await query(
-      "SELECT id FROM user_profiles WHERE email = $1",
-      [email]
+      "SELECT id FROM user_profiles WHERE email = $1 OR username = $2",
+      [email, username]
     );
+
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
-        error: "User already exists",
-        message: "An account with this email already exists",
+        error: "User with this email or username already exists",
       });
     }
 
     // Hash password
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
-    const newUser = await query(
-      `
-      INSERT INTO user_profiles (email, password_hash, first_name, last_name, phone)
+    // Insert new user
+    const insertQuery = `
+      INSERT INTO user_profiles (email, username, password_hash, first_name, last_name)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, email, first_name, last_name, phone, is_admin, created_at
-    `,
-      [email, passwordHash, firstName, lastName, phone]
-    );
+      RETURNING id, email, username, first_name, last_name, created_at
+    `;
 
-    const user = newUser.rows[0];
+    const result = await query(insertQuery, [
+      email.toLowerCase(),
+      username,
+      hashedPassword,
+      first_name || null,
+      last_name || null,
+    ]);
+
+    const newUser = result.rows[0];
 
     // Generate JWT token
-    const token = generateToken(user.id);
+    const token = jwt.sign(
+      {
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+      },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    );
 
     // Return user data (without password)
     res.status(201).json({
       message: "User registered successfully",
-      token,
       user: {
-        id: user.id,
-        email: user.email,
-        name: `${user.first_name} ${user.last_name}`,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        isAdmin: user.is_admin,
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
+        created_at: newUser.created_at,
       },
+      token,
     });
   } catch (error) {
     console.error("Registration error:", error);
+
+    // Handle specific database errors
+    if (error.code === "23505") {
+      // Unique violation
+      return res.status(409).json({
+        error: "User with this email or username already exists",
+      });
+    }
+
     res.status(500).json({
-      error: "Registration failed",
-      message: "An error occurred during registration",
+      error: "An error occurred during registration",
     });
   }
 });
 
 // Login endpoint
 router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
   try {
     // Validate input
-    const { error, value } = loginSchema.validate(req.body);
-    if (error) {
+    if (!email || !password) {
       return res.status(400).json({
-        error: "Validation failed",
-        details: error.details.map((d) => d.message),
+        error: "Email and password are required",
       });
     }
 
-    const { email, password } = value;
-
-    // Find user
-    const userResult = await query(
-      "SELECT id, email, password_hash, first_name, last_name, phone, is_admin, is_active FROM user_profiles WHERE email = $1",
+    // Find user by email (case-insensitive)
+    const result = await query(
+      "SELECT id, email, username, password_hash, first_name, last_name FROM user_profiles WHERE LOWER(email) = LOWER($1)",
       [email]
     );
 
-    if (userResult.rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(401).json({
-        error: "Invalid credentials",
-        message: "Email or password is incorrect",
+        error: "Invalid email or password",
       });
     }
 
-    const user = userResult.rows[0];
-
-    if (!user.is_active) {
-      return res.status(401).json({
-        error: "Account disabled",
-        message: "Your account has been disabled",
-      });
-    }
+    const user = result.rows[0];
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
+
     if (!isValidPassword) {
       return res.status(401).json({
-        error: "Invalid credentials",
-        message: "Email or password is incorrect",
+        error: "Invalid email or password",
       });
     }
 
+    // Update last login timestamp (optional)
+    await query(
+      "UPDATE user_profiles SET updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [user.id]
+    );
+
     // Generate JWT token
-    const token = generateToken(user.id);
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    );
 
-    // Get full user profile
-    const userProfile = await getUserProfile(user.id);
-
+    // Return user data (without password)
     res.json({
       message: "Login successful",
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
       token,
-      user: userProfile,
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({
-      error: "Login failed",
-      message: "An error occurred during login",
+      error: "An error occurred during login",
     });
   }
 });
 
-// Admin login endpoint (separate for admin dashboard)
-router.post("/admin/login", async (req, res) => {
+// Get current user profile (protected route)
+router.get("/profile", verifyToken, async (req, res) => {
   try {
-    const { error, value } = loginSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        error: "Validation failed",
-        details: error.details.map((d) => d.message),
-      });
-    }
-
-    const { email, password } = value;
-
-    // Find admin user
-    const userResult = await query(
-      "SELECT id, email, password_hash, first_name, last_name, is_admin, is_active FROM user_profiles WHERE email = $1 AND is_admin = true",
-      [email]
+    const result = await query(
+      "SELECT id, email, username, first_name, last_name, created_at, updated_at FROM user_profiles WHERE id = $1",
+      [req.user.id]
     );
 
-    if (userResult.rows.length === 0) {
-      return res.status(401).json({
-        error: "Access denied",
-        message: "Admin credentials required",
-      });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
     }
-
-    const admin = userResult.rows[0];
-
-    if (!admin.is_active) {
-      return res.status(401).json({
-        error: "Account disabled",
-        message: "Admin account has been disabled",
-      });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, admin.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({
-        error: "Invalid credentials",
-        message: "Email or password is incorrect",
-      });
-    }
-
-    // Generate JWT token
-    const token = generateToken(admin.id);
 
     res.json({
-      message: "Admin login successful",
-      token,
-      user: {
-        id: admin.id,
-        email: admin.email,
-        name: `${admin.first_name} ${admin.last_name}`,
-        isAdmin: admin.is_admin,
-      },
+      user: result.rows[0],
     });
-  } catch (error) {
-    console.error("Admin login error:", error);
-    res.status(500).json({
-      error: "Login failed",
-      message: "An error occurred during admin login",
-    });
-  }
-});
-
-// Get current user profile
-router.get("/profile", authenticateToken, async (req, res) => {
-  try {
-    const userProfile = await getUserProfile(req.user.id);
-
-    if (!userProfile) {
-      return res.status(404).json({
-        error: "User not found",
-        message: "User profile could not be retrieved",
-      });
-    }
-
-    res.json({ user: userProfile });
   } catch (error) {
     console.error("Profile fetch error:", error);
-    res.status(500).json({
-      error: "Profile fetch failed",
-      message: "Could not retrieve user profile",
-    });
+    res.status(500).json({ error: "Failed to fetch profile" });
   }
 });
 
-// Update user profile
-router.put("/profile", authenticateToken, async (req, res) => {
+// Update user profile (protected route)
+router.put("/profile", verifyToken, async (req, res) => {
+  const { first_name, last_name, username } = req.body;
+
   try {
-    const updateSchema = Joi.object({
-      firstName: Joi.string().min(2).max(50).optional(),
-      lastName: Joi.string().min(2).max(50).optional(),
-      phone: Joi.string().optional(),
-    });
-
-    const { error, value } = updateSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        error: "Validation failed",
-        details: error.details.map((d) => d.message),
-      });
-    }
-
+    // Build dynamic update query
     const updates = [];
     const values = [];
-    let paramIndex = 1;
+    let paramCount = 1;
 
-    if (value.firstName) {
-      updates.push(`first_name = $${paramIndex++}`);
-      values.push(value.firstName);
+    if (first_name !== undefined) {
+      updates.push(`first_name = $${paramCount}`);
+      values.push(first_name);
+      paramCount++;
     }
-    if (value.lastName) {
-      updates.push(`last_name = $${paramIndex++}`);
-      values.push(value.lastName);
+
+    if (last_name !== undefined) {
+      updates.push(`last_name = $${paramCount}`);
+      values.push(last_name);
+      paramCount++;
     }
-    if (value.phone !== undefined) {
-      updates.push(`phone = $${paramIndex++}`);
-      values.push(value.phone);
+
+    if (username !== undefined) {
+      updates.push(`username = $${paramCount}`);
+      values.push(username);
+      paramCount++;
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({
-        error: "No updates provided",
-        message: "Please provide at least one field to update",
-      });
+      return res.status(400).json({ error: "No fields to update" });
     }
 
+    // Add updated_at timestamp
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    // Add user id as the last parameter
     values.push(req.user.id);
 
-    await query(
-      `
+    const updateQuery = `
       UPDATE user_profiles 
-      SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $${paramIndex}
-    `,
-      values
-    );
+      SET ${updates.join(", ")}
+      WHERE id = $${paramCount}
+      RETURNING id, email, username, first_name, last_name, updated_at
+    `;
 
-    const updatedProfile = await getUserProfile(req.user.id);
+    const result = await query(updateQuery, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     res.json({
       message: "Profile updated successfully",
-      user: updatedProfile,
+      user: result.rows[0],
     });
   } catch (error) {
     console.error("Profile update error:", error);
-    res.status(500).json({
-      error: "Profile update failed",
-      message: "Could not update user profile",
-    });
-  }
-});
 
-// Add/Update user address
-router.post("/addresses", authenticateToken, async (req, res) => {
-  try {
-    const addressSchema = Joi.object({
-      type: Joi.string().valid("shipping", "billing").default("shipping"),
-      street: Joi.string().required(),
-      city: Joi.string().required(),
-      state: Joi.string().required(),
-      zipCode: Joi.string().required(),
-      country: Joi.string().required(),
-      isDefault: Joi.boolean().default(false),
-    });
-
-    const { error, value } = addressSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        error: "Validation failed",
-        details: error.details.map((d) => d.message),
+    if (error.code === "23505") {
+      // Unique violation
+      return res.status(409).json({
+        error: "Username already taken",
       });
     }
 
-    await transaction(async (client) => {
-      // If this is set as default, remove default from other addresses
-      if (value.isDefault) {
-        await client.query(
-          "UPDATE user_addresses SET is_default = false WHERE user_id = $1 AND type = $2",
-          [req.user.id, value.type]
-        );
-      }
-
-      // Add new address
-      const newAddress = await client.query(
-        `
-        INSERT INTO user_addresses (user_id, type, street, city, state, zip_code, country, is_default)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING *
-      `,
-        [
-          req.user.id,
-          value.type,
-          value.street,
-          value.city,
-          value.state,
-          value.zipCode,
-          value.country,
-          value.isDefault,
-        ]
-      );
-
-      return newAddress.rows[0];
-    });
-
-    res.status(201).json({
-      message: "Address added successfully",
-    });
-  } catch (error) {
-    console.error("Address creation error:", error);
-    res.status(500).json({
-      error: "Address creation failed",
-      message: "Could not add address",
-    });
+    res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
-// Verify token endpoint
-router.get("/verify", authenticateToken, async (req, res) => {
+// Change password (protected route)
+router.post("/change-password", verifyToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
   try {
-    const userProfile = await getUserProfile(req.user.id);
-    res.json({
-      valid: true,
-      user: userProfile,
-    });
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: "Current password and new password are required",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: "New password must be at least 6 characters long",
+      });
+    }
+
+    // Get current user's password hash
+    const result = await query(
+      "SELECT password_hash FROM user_profiles WHERE id = $1",
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      result.rows[0].password_hash
+    );
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password
+    await query(
+      "UPDATE user_profiles SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [hashedPassword, req.user.id]
+    );
+
+    res.json({ message: "Password changed successfully" });
   } catch (error) {
-    res.status(500).json({
-      error: "Verification failed",
-      message: "Could not verify token",
-    });
+    console.error("Password change error:", error);
+    res.status(500).json({ error: "Failed to change password" });
   }
 });
 
-// Logout endpoint (optional - JWT is stateless)
-router.post("/logout", (req, res) => {
+// Logout endpoint (optional - mainly for client-side token removal)
+router.post("/logout", verifyToken, (req, res) => {
+  // In a JWT-based system, logout is typically handled client-side
+  // by removing the token from storage. This endpoint can be used
+  // for logging purposes or to blacklist tokens if implemented.
   res.json({ message: "Logged out successfully" });
+});
+
+// Password reset request (sends reset email)
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Check if user exists
+    const result = await query(
+      "SELECT id, email FROM user_profiles WHERE LOWER(email) = LOWER($1)",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      // Don't reveal if email exists or not for security
+      return res.json({
+        message: "If the email exists, a password reset link has been sent",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Generate reset token
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: "password-reset" },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "1h" }
+    );
+
+    // TODO: Send email with reset link containing the token
+    // For now, just return the token (remove this in production!)
+    console.log("Password reset token:", resetToken);
+
+    res.json({
+      message: "If the email exists, a password reset link has been sent",
+      // Remove this line in production:
+      resetToken:
+        process.env.NODE_ENV === "development" ? resetToken : undefined,
+    });
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    res.status(500).json({ error: "Failed to process password reset request" });
+  }
+});
+
+// Reset password with token
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        error: "Token and new password are required",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Verify reset token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+      if (decoded.type !== "password-reset") {
+        throw new Error("Invalid token type");
+      }
+    } catch (error) {
+      return res.status(401).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password
+    const result = await query(
+      "UPDATE user_profiles SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id",
+      [hashedPassword, decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Password reset error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
 });
 
 export default router;
