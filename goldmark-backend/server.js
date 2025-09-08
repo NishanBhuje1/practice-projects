@@ -25,6 +25,10 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy setting - MUST be set before rate limiting
+// This is required when deployed behind proxies (Vercel, AWS, etc.)
+app.set("trust proxy", true);
+
 // Security middleware
 app.use(
   helmet({
