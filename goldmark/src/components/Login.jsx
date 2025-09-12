@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
-import { authService } from "../services/supabase";
+import { authService, userService } from "../services/supabase";
 import { useStore } from "../store/useStore";
 
 const Login = () => {
