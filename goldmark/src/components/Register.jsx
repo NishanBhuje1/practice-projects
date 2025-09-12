@@ -10,7 +10,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import { authService } from "../services/supabase";
+import { authService, userService } from "../services/supabase";
 import { useStore } from "../store/useStore";
 
 const Register = () => {
@@ -91,6 +91,12 @@ const Register = () => {
       }
 
       if (user) {
+        await userService.createUserProfile(user.id, {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          is_admin: false,
+        });
         setSuccess(
           "Account created successfully! Please check your email to verify your account."
         );
