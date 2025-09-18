@@ -1,21 +1,21 @@
 // src/services/apiService.js
-import API_BASE_URL, { getAuthHeaders } from "../config/api";
+import API_BASE_URL, { getAuthHeaders } from '../config/api';
 
 class APIError extends Error {
   constructor(message, status, data) {
     super(message);
     this.status = status;
     this.data = data;
-    this.name = "APIError";
+    this.name = 'APIError';
   }
 }
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
-  const contentType = response.headers.get("content-type");
+  const contentType = response.headers.get('content-type');
   let data;
 
-  if (contentType && contentType.includes("application/json")) {
+  if (contentType && contentType.includes('application/json')) {
     data = await response.json();
   } else {
     data = await response.text();
@@ -37,7 +37,7 @@ const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const config = {
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...getAuthHeaders(),
       ...options.headers,
     },
@@ -46,8 +46,8 @@ const apiRequest = async (endpoint, options = {}) => {
 
   if (
     config.body &&
-    typeof config.body === "object" &&
-    config.headers["Content-Type"] === "application/json"
+    typeof config.body === 'object' &&
+    config.headers['Content-Type'] === 'application/json'
   ) {
     config.body = JSON.stringify(config.body);
   }
@@ -71,13 +71,13 @@ export const productAPI = {
   async getProducts(params = {}) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== "") {
+      if (value !== undefined && value !== '') {
         searchParams.append(key, value);
       }
     });
 
     const queryString = searchParams.toString();
-    const endpoint = `/products${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/products${queryString ? `?${queryString}` : ''}`;
 
     return await apiRequest(endpoint);
   },
@@ -92,7 +92,7 @@ export const productAPI = {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
     const endpoint = `/products/search/${encodeURIComponent(term)}${
-      queryString ? `?${queryString}` : ""
+      queryString ? `?${queryString}` : ''
     }`;
 
     return await apiRequest(endpoint);
@@ -100,13 +100,13 @@ export const productAPI = {
 
   // Get categories
   async getCategories() {
-    return await apiRequest("/products/categories/all");
+    return await apiRequest('/products/categories/all');
   },
 
   // Admin: Create product
   async createProduct(productData) {
-    return await apiRequest("/products", {
-      method: "POST",
+    return await apiRequest('/products', {
+      method: 'POST',
       body: productData,
     });
   },
@@ -114,7 +114,7 @@ export const productAPI = {
   // Admin: Update product
   async updateProduct(id, productData) {
     return await apiRequest(`/products/${id}`, {
-      method: "PUT",
+      method: 'PUT',
       body: productData,
     });
   },
@@ -122,14 +122,14 @@ export const productAPI = {
   // Admin: Delete product
   async deleteProduct(id) {
     return await apiRequest(`/products/${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   },
 
   // Admin: Update stock
   async updateStock(id, stockQuantity) {
     return await apiRequest(`/products/${id}/stock`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: { stockQuantity },
     });
   },
@@ -139,43 +139,43 @@ export const productAPI = {
 export const authAPI = {
   // Login user
   async login(credentials) {
-    return await apiRequest("/auth/login", {
-      method: "POST",
+    return await apiRequest('/auth/login', {
+      method: 'POST',
       body: credentials,
     });
   },
 
   // Register user
   async register(userData) {
-    return await apiRequest("/auth/register", {
-      method: "POST",
-      body: userData,
+    return await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
     });
   },
 
   // Refresh token
   async refreshToken() {
-    return await apiRequest("/auth/refresh", {
-      method: "POST",
+    return await apiRequest('/auth/refresh', {
+      method: 'POST',
     });
   },
 
   // Logout
   async logout() {
-    return await apiRequest("/auth/logout", {
-      method: "POST",
+    return await apiRequest('/auth/logout', {
+      method: 'POST',
     });
   },
 
   // Get current user profile
   async getProfile() {
-    return await apiRequest("/auth/profile");
+    return await apiRequest('/auth/profile');
   },
 
   // Update profile
   async updateProfile(profileData) {
-    return await apiRequest("/auth/profile", {
-      method: "PUT",
+    return await apiRequest('/auth/profile', {
+      method: 'PUT',
       body: profileData,
     });
   },
@@ -185,8 +185,8 @@ export const authAPI = {
 export const orderAPI = {
   // Create new order
   async createOrder(orderData) {
-    return await apiRequest("/orders", {
-      method: "POST",
+    return await apiRequest('/orders', {
+      method: 'POST',
       body: orderData,
     });
   },
@@ -196,7 +196,7 @@ export const orderAPI = {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
     const endpoint = `/orders/user/${userId}${
-      queryString ? `?${queryString}` : ""
+      queryString ? `?${queryString}` : ''
     }`;
 
     return await apiRequest(endpoint);
@@ -210,7 +210,7 @@ export const orderAPI = {
   // Update order status (admin)
   async updateOrderStatus(orderId, status) {
     return await apiRequest(`/orders/${orderId}/status`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: { status },
     });
   },
@@ -219,7 +219,7 @@ export const orderAPI = {
   async getAllOrders(params = {}) {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
-    const endpoint = `/orders${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/orders${queryString ? `?${queryString}` : ''}`;
 
     return await apiRequest(endpoint);
   },
@@ -228,7 +228,7 @@ export const orderAPI = {
 // Admin API services
 export const adminAPI = {
   // Get dashboard analytics
-  async getDashboardAnalytics(period = "30") {
+  async getDashboardAnalytics(period = '30') {
     return await apiRequest(`/admin/dashboard/analytics?period=${period}`);
   },
 
@@ -236,7 +236,7 @@ export const adminAPI = {
   async getUsers(params = {}) {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
-    const endpoint = `/admin/users${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/admin/users${queryString ? `?${queryString}` : ''}`;
 
     return await apiRequest(endpoint);
   },
@@ -244,20 +244,20 @@ export const adminAPI = {
   // Update user status
   async updateUserStatus(userId, statusData) {
     return await apiRequest(`/admin/users/${userId}/status`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: statusData,
     });
   },
 
   // Get inventory alerts
   async getInventoryAlerts() {
-    return await apiRequest("/admin/inventory/alerts");
+    return await apiRequest('/admin/inventory/alerts');
   },
 
   // Bulk update stock
   async bulkUpdateStock(updates) {
-    return await apiRequest("/admin/inventory/bulk-update", {
-      method: "PATCH",
+    return await apiRequest('/admin/inventory/bulk-update', {
+      method: 'PATCH',
       body: { updates },
     });
   },
@@ -266,7 +266,7 @@ export const adminAPI = {
   async getLogs(params = {}) {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
-    const endpoint = `/admin/logs${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/admin/logs${queryString ? `?${queryString}` : ''}`;
 
     return await apiRequest(endpoint);
   },
@@ -284,16 +284,16 @@ export const adminAPI = {
 export const paymentAPI = {
   // Create payment intent
   async createPaymentIntent(orderData) {
-    return await apiRequest("/payments/create-intent", {
-      method: "POST",
+    return await apiRequest('/payments/create-intent', {
+      method: 'POST',
       body: orderData,
     });
   },
 
   // Confirm payment
   async confirmPayment(paymentIntentId, paymentMethodId) {
-    return await apiRequest("/payments/confirm", {
-      method: "POST",
+    return await apiRequest('/payments/confirm', {
+      method: 'POST',
       body: { paymentIntentId, paymentMethodId },
     });
   },
@@ -305,8 +305,8 @@ export const paymentAPI = {
 
   // Process refund (admin)
   async processRefund(paymentIntentId, amount) {
-    return await apiRequest("/payments/refund", {
-      method: "POST",
+    return await apiRequest('/payments/refund', {
+      method: 'POST',
       body: { paymentIntentId, amount },
     });
   },
@@ -317,35 +317,35 @@ export const genericAPI = {
   async get(endpoint, params = {}) {
     const searchParams = new URLSearchParams(params);
     const queryString = searchParams.toString();
-    const fullEndpoint = `${endpoint}${queryString ? `?${queryString}` : ""}`;
+    const fullEndpoint = `${endpoint}${queryString ? `?${queryString}` : ''}`;
 
     return await apiRequest(fullEndpoint);
   },
 
   async post(endpoint, data) {
     return await apiRequest(endpoint, {
-      method: "POST",
+      method: 'POST',
       body: data,
     });
   },
 
   async put(endpoint, data) {
     return await apiRequest(endpoint, {
-      method: "PUT",
+      method: 'PUT',
       body: data,
     });
   },
 
   async patch(endpoint, data) {
     return await apiRequest(endpoint, {
-      method: "PATCH",
+      method: 'PATCH',
       body: data,
     });
   },
 
   async delete(endpoint) {
     return await apiRequest(endpoint, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   },
 };
@@ -370,14 +370,14 @@ export const apiUtils = {
     if (error instanceof APIError) {
       return error.message;
     }
-    return "An unexpected error occurred";
+    return 'An unexpected error occurred';
   },
 
   // Handle token expiration
   handleTokenExpiration() {
-    localStorage.removeItem("token");
+    localStorage.removeItem('token');
     // Redirect to login or trigger re-authentication
-    window.location.href = "/login";
+    window.location.href = '/login';
   },
 };
 

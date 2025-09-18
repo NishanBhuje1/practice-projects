@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -9,27 +9,28 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle,
-} from "lucide-react";
-import { authService, userService } from "../services/supabase";
-import { useStore } from "../store/useStore";
+} from 'lucide-react';
+import { authService, userService } from '../services/supabase';
+import { useStore } from '../store/useStore';
+import { authAPI } from '../services/apiService';
 
 const Register = () => {
   const navigate = useNavigate();
   const { setUser, setIsAuthenticated } = useStore();
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,7 +38,7 @@ const Register = () => {
       ...prev,
       [name]: value,
     }));
-    if (error) setError("");
+    if (error) setError('');
   };
 
   const validateForm = () => {
@@ -47,17 +48,17 @@ const Register = () => {
       !formData.email ||
       !formData.password
     ) {
-      setError("Please fill in all required fields");
+      setError('Please fill in all required fields');
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       return false;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError('Password must be at least 6 characters long');
       return false;
     }
 
@@ -70,19 +71,16 @@ const Register = () => {
     if (!validateForm()) return;
 
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
-      const { user, error: signUpError } = await authService.signUp(
-        formData.email,
-        formData.password,
-        {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          email: formData.email,
-        }
-      );
+      const { user, error: signUpError } = await authAPI.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        password: formData.password,
+      });
 
       if (signUpError) {
         setError(signUpError);
@@ -91,14 +89,8 @@ const Register = () => {
       }
 
       if (user) {
-        await userService.createUserProfile(user.id, {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          is_admin: false,
-        });
         setSuccess(
-          "Account created successfully! Please check your email to verify your account."
+          'Account created successfully! Please check your email to verify your account.'
         );
 
         // Auto login after successful registration
@@ -112,12 +104,12 @@ const Register = () => {
             isAdmin: false,
           });
           setIsAuthenticated(true);
-          navigate("/");
+          navigate('/');
         }, 2000);
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
-      console.error("Registration error:", err);
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
@@ -269,7 +261,7 @@ const Register = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={handleChange}
@@ -313,7 +305,7 @@ const Register = () => {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -355,14 +347,14 @@ const Register = () => {
                   Creating account...
                 </div>
               ) : (
-                "Create Account"
+                'Create Account'
               )}
             </button>
           </div>
 
           <div className="text-center">
             <span className="text-sm text-gray-600">
-              Already have an account?{" "}
+              Already have an account?{' '}
               <Link
                 to="/login"
                 className="font-medium text-amber-600 hover:text-amber-500"
