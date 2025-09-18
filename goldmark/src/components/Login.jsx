@@ -1,21 +1,22 @@
 // components/Login.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
-import { authService, userService } from "../services/supabase";
-import { useStore } from "../store/useStore";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
+import { authService, userService } from '../services/supabase';
+import { useStore } from '../store/useStore';
+import { authAPI } from '../services/apiService';
 
 const Login = () => {
   const navigate = useNavigate();
   const { setUser, setIsAuthenticated } = useStore();
 
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,25 +24,25 @@ const Login = () => {
       ...prev,
       [name]: value,
     }));
-    if (error) setError("");
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       if (!formData.email || !formData.password) {
-        setError("Please fill in all fields");
+        setError('Please fill in all fields');
         setLoading(false);
         return;
       }
 
-      const { user, error: signInError } = await authService.signIn(
-        formData.email,
-        formData.password
-      );
+      const { user, error: signInError } = await authAPI.login({
+        email: formData.email,
+        password: formData.password,
+      });
 
       if (signInError) {
         setError(signInError);
@@ -50,27 +51,25 @@ const Login = () => {
       }
 
       if (user) {
-        const { profile } = await userService.getUserProfile(user.id);
-
         setUser({
           id: user.id,
           email: user.email,
-          firstName: profile?.first_name || "",
-          lastName: profile?.last_name || "",
-          phone: profile?.phone || "",
-          isAdmin: profile?.is_admin || false,
+          firstName: user?.first_name || '',
+          lastName: user?.last_name || '',
+          phone: user?.phone || '',
+          isAdmin: user?.is_admin || false,
         });
         setIsAuthenticated(true);
 
-        if (profile?.is_admin) {
-          navigate("/admin");
+        if (user?.is_admin) {
+          navigate('/admin');
         } else {
-          navigate("/");
+          navigate('/');
         }
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
-      console.error("Login error:", err);
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
@@ -140,7 +139,7 @@ const Login = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={formData.password}
@@ -183,14 +182,14 @@ const Login = () => {
                   Signing in...
                 </div>
               ) : (
-                "Sign In"
+                'Sign In'
               )}
             </button>
           </div>
 
           <div className="text-center">
             <span className="text-sm text-gray-600">
-              Don't have an account?{" "}
+              Don't have an account?{' '}
               <Link
                 to="/register"
                 className="font-medium text-amber-600 hover:text-amber-500"

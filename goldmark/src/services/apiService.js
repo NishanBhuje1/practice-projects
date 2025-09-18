@@ -141,7 +141,7 @@ export const authAPI = {
   async login(credentials) {
     return await apiRequest('/auth/login', {
       method: 'POST',
-      body: credentials,
+      body: JSON.stringify(credentials),
     });
   },
 
