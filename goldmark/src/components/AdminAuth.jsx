@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Shield } from "lucide-react";
-import { authService, userService } from "../services/supabase";
-import { useStore } from "../store/useStore";
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Shield } from 'lucide-react';
+import { authService, userService } from '../services/supabase';
+import { useStore } from '../store/useStore';
+import { authAPI } from '../services/apiService';
 
 // Admin Context
 const AdminContext = createContext();
@@ -39,7 +40,7 @@ export const AdminProvider = ({ children }) => {
 export const useAdmin = () => {
   const context = useContext(AdminContext);
   if (!context) {
-    throw new Error("useAdmin must be used within AdminProvider");
+    throw new Error('useAdmin must be used within AdminProvider');
   }
   return context;
 };
@@ -51,12 +52,12 @@ export const AdminLogin = () => {
   const { setIsAdminAuthenticated } = useAdmin();
 
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,26 +65,26 @@ export const AdminLogin = () => {
       ...prev,
       [name]: value,
     }));
-    if (error) setError("");
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       if (!formData.email || !formData.password) {
-        setError("Please fill in all fields");
+        setError('Please fill in all fields');
         setLoading(false);
         return;
       }
 
       // Sign in with Supabase
-      const { user, error: signInError } = await authService.signIn(
-        formData.email,
-        formData.password
-      );
+      const { user, error: signInError } = await authAPI.login({
+        email: formData.email,
+        password: formData.password,
+      });
 
       if (signInError) {
         setError(signInError);
@@ -93,11 +94,10 @@ export const AdminLogin = () => {
 
       if (user) {
         // Get user profile to check admin status
-        const { profile } = await userService.getUserProfile(user.id);
 
         // Check if user is admin
-        if (!profile?.is_admin) {
-          setError("Access denied. Admin privileges required.");
+        if (!user?.isAdmin) {
+          setError('Access denied. Admin privileges required.');
           await authService.signOut();
           setLoading(false);
           return;
@@ -107,9 +107,9 @@ export const AdminLogin = () => {
         const userData = {
           id: user.id,
           email: user.email,
-          firstName: profile?.first_name || "",
-          lastName: profile?.last_name || "",
-          phone: profile?.phone || "",
+          firstName: user?.first_name || '',
+          lastName: user?.last_name || '',
+          phone: user?.phone || '',
           isAdmin: true,
         };
 
@@ -117,11 +117,11 @@ export const AdminLogin = () => {
         setIsAuthenticated(true);
         setIsAdminAuthenticated(true);
 
-        navigate("/admin/dashboard");
+        navigate('/admin/dashboard');
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
-      console.error("Admin login error:", err);
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Admin login error:', err);
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ export const AdminLogin = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={formData.password}
@@ -234,7 +234,7 @@ export const AdminLogin = () => {
                   Signing in...
                 </div>
               ) : (
-                "Access Admin Dashboard"
+                'Access Admin Dashboard'
               )}
             </button>
           </div>
@@ -242,7 +242,7 @@ export const AdminLogin = () => {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => navigate("/")}
+              onClick={() => navigate('/')}
               className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
             >
               ← Back to main site
@@ -260,7 +260,7 @@ export const AdminLogin = () => {
             <br />
             1. Register normally on the main site
             <br />
-            2. Set{" "}
+            2. Set{' '}
             <code className="bg-blue-800 px-1 rounded">is_admin = true</code> in
             Supabase
             <br />
@@ -304,7 +304,7 @@ export const AdminHeader = () => {
   const handleLogout = async () => {
     await logout();
     setIsAdminAuthenticated(false);
-    navigate("/");
+    navigate('/');
   };
 
   return (
@@ -320,10 +320,10 @@ export const AdminHeader = () => {
 
           <div className="flex items-center space-x-4">
             <span className="text-gray-300 text-sm">
-              Welcome, {user?.firstName || "Admin"}
+              Welcome, {user?.firstName || 'Admin'}
             </span>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate('/')}
               className="text-gray-300 hover:text-white text-sm transition-colors"
             >
               View Site
