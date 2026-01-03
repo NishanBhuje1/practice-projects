@@ -19,7 +19,11 @@ import {
   AlertCircle,
   LogOut,
 } from "lucide-react";
-import { useStore } from "../hooks/useStore"; // Adjust path as needed
+import { 
+  useProducts, 
+  useAuth, 
+  useGlobalState 
+} from "../hooks/useStore";
 
 // Toast notification component for feedback
 const Toast = ({ message, type, onClose }) => {
@@ -58,13 +62,12 @@ const LoadingSpinner = ({ size = "default" }) => {
 
 // AdminHeader Component
 const AdminHeader = () => {
-  const { logout, setIsAdminAuthenticated } = useStore();
+  const { logoutUser } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await logout(); // Call the store's logout function
-      setIsAdminAuthenticated(false); // Clear admin authentication state
-      window.location.href = "/"; // Force redirect to home
+      await logoutUser();
+      window.location.href = "/";
     } catch (error) {
       console.error("Admin logout error:", error);
     }
@@ -114,7 +117,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
     if (product) {
       setFormData({
         ...product,
-        stock: product.stock || 10,
+        stock: product.stockQuantity || product.stock || 10,
       });
     } else {
       setFormData({
@@ -191,23 +194,6 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"
                 disabled={isSubmitting}
@@ -360,7 +346,6 @@ const ProductModal = ({ isOpen, onClose, onSave, product, title }) => {
 };
 
 // Product Row Component
-// Product Row Component
 const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
   const [stockValue, setStockValue] = useState(product.stockQuantity || 10);
   const [isEditing, setIsEditing] = useState(false);
@@ -482,19 +467,23 @@ const ProductRow = ({ product, onEdit, onDelete, onStockUpdate }) => {
 
 // Main AdminDashboard Component
 const AdminDashboard = () => {
-  // Zustand store
+  // Store hooks
   const {
     products,
     productsLoading,
     productsError,
-    isLoading,
-    error,
     fetchProducts,
     addProduct,
     updateProduct,
     deleteProduct,
+    updateProductStock,
+  } = useProducts();
+
+  const {
+    isLoading,
+    error,
     clearError,
-  } = useStore();
+  } = useGlobalState();
 
   // Local state
   const [activeTab, setActiveTab] = useState("overview");
@@ -620,7 +609,7 @@ const AdminDashboard = () => {
 
   const handleStockUpdate = async (productId, newStock) => {
     try {
-      await updateProduct(productId, { stockQuantity: newStock });
+      await updateProductStock(productId, newStock);
       setToast({ message: "Stock updated successfully!", type: "success" });
     } catch (error) {
       setToast({
@@ -888,13 +877,22 @@ const AdminDashboard = () => {
                   </select>
                 </div>
 
-                <button
-                  onClick={exportData}
-                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  <Download size={16} />
-                  <span>Export</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+                  >
+                    <Plus size={16} />
+                    <span>Add Product</span>
+                  </button>
+                  <button
+                    onClick={exportData}
+                    className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <Download size={16} />
+                    <span>Export</span>
+                  </button>
+                </div>
               </div>
             </div>
 

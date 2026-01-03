@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useStore } from "./store/useStore";
+import { useStore } from "./hooks/useStore";
 
 // Components
 import Header from "./components/Header";
@@ -52,16 +52,30 @@ const ProtectedRoute = ({ children, requireAuth = true }) => {
 };
 
 function App() {
-  const { initializeAuth, isLoading, error, clearError } = useStore();
+  const { isLoading, error, clearError, initializeStore, initializeAuth } =
+    useStore();
 
-  // Initialize authentication on app start
+  // Initialize store and auth safely
   useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+    const initialize = async () => {
+      try {
+        if (initializeAuth) {
+          await initializeAuth();
+        }
+        if (initializeStore) {
+          await initializeStore();
+        }
+      } catch (error) {
+        console.error("Initialization error:", error);
+      }
+    };
+
+    initialize();
+  }, [initializeAuth, initializeStore]);
 
   // Clear errors after 5 seconds
   useEffect(() => {
-    if (error) {
+    if (error && clearError) {
       const timer = setTimeout(() => {
         clearError();
       }, 5000);
@@ -90,7 +104,7 @@ function App() {
           <div className="fixed top-4 right-4 z-50 bg-red-500 text-white p-4 rounded-lg shadow-lg max-w-md">
             <div className="flex items-center justify-between">
               <span className="text-sm">{error}</span>
-              <button 
+              <button
                 onClick={clearError}
                 className="ml-4 text-white hover:text-gray-200 text-lg font-bold"
               >
@@ -142,13 +156,13 @@ function PublicApp() {
         <Route path="/register" element={<Register />} />
 
         {/* Protected Routes */}
-        <Route 
-          path="/profile" 
+        <Route
+          path="/profile"
           element={
             <ProtectedRoute>
               <Profile />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Admin Redirect */}
