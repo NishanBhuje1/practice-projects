@@ -2,40 +2,6 @@ import { Link } from "react-router-dom";
 import PageSection from "../components/layout/PageSection.jsx";
 import Button from "../components/ui/Button.jsx";
 
-function GeoArt() {
-  return (
-    <svg
-      className="w-full max-w-xl"
-      viewBox="0 0 640 420"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <g opacity="0.9" stroke="rgba(255,255,255,0.65)" strokeWidth="2">
-        <rect
-          x="255"
-          y="70"
-          width="140"
-          height="140"
-          transform="rotate(45 255 70)"
-        />
-        <circle cx="500" cy="150" r="92" />
-        <circle cx="500" cy="150" r="46" />
-        <circle cx="320" cy="310" r="92" />
-        <path d="M290 310 H350" />
-        <path d="M320 280 V340" opacity="0" />
-        <path d="M290 340 L350 280" />
-        <rect
-          x="470"
-          y="250"
-          width="140"
-          height="140"
-          transform="rotate(45 470 250)"
-        />
-      </g>
-    </svg>
-  );
-}
-
 function ExpertiseRow({ title, desc }) {
   return (
     <div className="grid gap-6 md:grid-cols-12 items-end">
@@ -58,17 +24,17 @@ function ExpertiseRow({ title, desc }) {
 export default function Home() {
   return (
     <div className="bg-softserve relative overflow-hidden guide-lines">
-      {/* top dotted strip */}
-      <div className="dotted-strip h-10 w-full" />
+      {/* top dotted strip (smaller) */}
+      <div className="dotted-strip h-6 w-full" />
 
       {/* HERO */}
       <PageSection
         id="welcome"
         header={null}
         divider="wave"
-        contentClassName="py-8 md:py-10"
+        contentClassName="pt-6 pb-12 md:pt-8 md:pb-14" // <-- controls gap now
       >
-        <div className="text-center pt-4 md:pt-6">
+        <div className="text-center">
           <p className="text-sm tracking-[0.18em] uppercase text-white/60">
             Empowering Businesses with Modern Web Applications
           </p>
@@ -97,6 +63,7 @@ export default function Home() {
         header="Section: About"
         divider="line"
         className="pt-0"
+        contentClassName="py-16 md:py-20"
       >
         <div className="grid gap-12 md:grid-cols-12 items-center">
           <div className="md:col-span-5">
@@ -114,7 +81,7 @@ export default function Home() {
             </p>
 
             <div className="mt-8">
-              <Link to="/services" className="btn-primary">
+              <Link to="/portfolio" className="btn-primary">
                 Discover More
               </Link>
             </div>
@@ -136,6 +103,7 @@ export default function Home() {
         header="Section: Expertise"
         divider="none"
         className="pt-0"
+        contentClassName="py-16 md:py-20"
       >
         <h2 className="display text-5xl md:text-6xl text-white/70">
           Our Expertise
@@ -157,7 +125,7 @@ export default function Home() {
         </div>
       </PageSection>
 
-      <div className="h-20" />
+      <div className="h-12" />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ThemeSwitch from "../theme/ThemeSwitch.jsx";
 
 /* ======================
    Motion Variants (Apple-like)
@@ -103,7 +102,6 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             {/* Theme slider (outside menu) */}
-            <ThemeSwitch />
 
             <button
               type="button"
@@ -114,14 +112,15 @@ export default function Navbar() {
     px-6 py-3 rounded-full
     text-xs font-semibold tracking-[0.25em]
     cursor-pointer overflow-hidden
-    text-[rgb(var(--text-primary))]
-    bg-[rgb(var(--surface))]
-    shadow-[0_6px_18px_-10px_rgba(0,0,0,0.45)]
+    text-[rgb(var(--fg))]
+    bg-[rgba(var(--bg1),0.35)]
+    ring-1 ring-[rgba(var(--stroke),0.14)]
+    shadow-[0_10px_28px_-18px_rgba(0,0,0,0.65)]
     transition-all duration-150
+    hover:bg-[rgba(var(--bg1),0.45)]
     active:scale-[0.97]
   "
             >
-              {/* Animated glow */}
               <span className="pointer-events-none absolute inset-0 flex items-center justify-center z-0">
                 <span
                   className="
@@ -134,7 +133,6 @@ export default function Navbar() {
                 />
               </span>
 
-              {/* Label */}
               <span className="relative z-10 flex items-center gap-2">
                 <span>MENU</span>
                 <span className="text-sm leading-none">+</span>

@@ -6,14 +6,14 @@ export default function PageSection({
   header,
   divider = "line", // "line" | "wave" | "none"
   className = "",
+  contentClassName = "",
   children,
-  contentClassName = "", // NEW: control inner padding per section
 }) {
   return (
     <section id={id} className={`relative ${className}`}>
       {header ? <StickySectionHeader label={header} /> : null}
 
-      <div className={`max-w-6xl mx-auto px-6 py-20 ${contentClassName}`}>
+      <div className={`max-w-6xl mx-auto px-6 ${contentClassName}`}>
         {children}
       </div>
 
