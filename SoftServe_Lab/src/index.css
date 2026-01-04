@@ -2,189 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* -------------------------------------------------------
-   Design Tokens (Wix-like: dark, soft borders, premium type)
--------------------------------------------------------- */
+/* LIGHT is default */
 :root {
-  /* Light */
-  --bg: 255 255 255;
-  --text: 10 15 18;
-  --muted: 85 95 105;
+  --bg: 250 251 252;
+  --surface: 255 255 255;
+  --border: 226 232 240;
+  --accent: 15 23 42;
 
-  --card: 246 247 248;
-  --card2: 240 242 244;
-
-  --border: 215 220 224;
-  --divider: 215 220 224;
-
-  --accent: 12 120 255;      /* blue */
-  --accent2: 0 205 255;      /* cyan */
+  --text-primary: 15 23 42;
+  --text-secondary: 71 85 105;
+  --text-muted: 100 116 139;
+  --text-invert: 250 251 252;
 }
 
-.dark {
-  /* Dark (close to Wix dark themes) */
-  --bg: 5 19 25;             /* deep navy */
-  --text: 215 226 232;       /* soft white */
-  --muted: 150 165 172;
+/* DARK when html has class="dark" */
+html.dark {
+  --bg: 5 19 25;
+  --surface: 12 28 36;
+  --border: 51 64 71;
+  --accent: 188 200 208;
 
-  --card: 8 26 34;           /* card surface */
-  --card2: 10 32 42;         /* card hover/surface */
-  --border: 70 92 100;       /* subtle border */
-  --divider: 70 92 100;
-
-  --accent: 12 120 255;      /* blue */
-  --accent2: 0 205 255;      /* cyan */
+  --text-primary: 188 200 208;
+  --text-secondary: 142 155 162;
+  --text-muted: 97 110 117;
+  --text-invert: 5 19 25;
 }
 
-/* Base page feel */
-html, body {
+html,
+body {
   height: 100%;
 }
+
 body {
   background: rgb(var(--bg));
-  color: rgb(var(--text));
+  color: rgb(var(--text-primary));
+}
+/* Light mode tokens */
+html.light {
+  --bg0: 250 251 252;
+  --bg1: 255 255 255;
+  --fg: 15 23 42;
+  --muted: 71 85 105;
+  --stroke: 15 23 42;
+  --accent: 109 98 255;
 }
 
-/* Selection */
-::selection {
-  background: rgb(var(--accent) / 0.25);
-}
-
-/* -------------------------------------------------------
-   Reusable UI Classes
--------------------------------------------------------- */
-@layer components {
-  /* Container: your standard wrapper */
-  .page {
-    @apply max-w-6xl mx-auto px-6 py-20;
-  }
-
-  /* Headings */
-  .h1 {
-    @apply text-4xl md:text-5xl font-semibold tracking-tight;
-  }
-  .h2 {
-    @apply text-2xl md:text-3xl font-semibold tracking-tight;
-  }
-  .lead {
-    @apply max-w-2xl text-base md:text-lg;
-    color: rgb(var(--muted));
-  }
-
-  /* Premium card */
-  .card {
-    @apply rounded-2xl border p-6 transition;
-    border-color: rgb(var(--border) / 0.6);
-    background: linear-gradient(
-      180deg,
-      rgb(var(--card) / 1) 0%,
-      rgb(var(--card) / 0.92) 100%
-    );
-    box-shadow:
-      0 12px 30px rgb(0 0 0 / 0.10);
-  }
-
-  .card:hover {
-    border-color: rgb(var(--border) / 0.9);
-    background: linear-gradient(
-      180deg,
-      rgb(var(--card2) / 1) 0%,
-      rgb(var(--card) / 0.96) 100%
-    );
-    transform: translateY(-2px);
-  }
-
-  /* Buttons */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition border;
-    border-color: rgb(var(--border) / 0.75);
-    background: rgb(var(--text));
-    color: rgb(var(--bg));
-  }
-
-  .btn:hover {
-    transform: translateY(-1px);
-    opacity: 0.95;
-  }
-
-  .btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .btn-outline {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition border;
-    border-color: rgb(var(--border) / 0.75);
-    background: rgb(var(--card));
-    color: rgb(var(--text));
-  }
-
-  .btn-outline:hover {
-    background: rgb(var(--card2));
-    transform: translateY(-1px);
-  }
-
-  /* Inputs */
-  .input, .textarea, select.input {
-    @apply w-full rounded-xl border px-4 py-3 text-sm outline-none transition;
-    border-color: rgb(var(--border) / 0.70);
-    background: rgb(var(--bg));
-    color: rgb(var(--text));
-  }
-
-  .input:focus, .textarea:focus, select.input:focus {
-    border-color: rgb(var(--accent) / 0.85);
-    box-shadow: 0 0 0 4px rgb(var(--accent) / 0.18);
-  }
-
-  /* Subtle “Wix” glow accent used in hero */
-  .heroGlow {
-    position: relative;
-  }
-  .heroGlow::before {
-    content: "";
-    position: absolute;
-    inset: -80px -40px auto -40px;
-    height: 240px;
-    background: radial-gradient(
-      circle at 20% 30%,
-      rgb(var(--accent) / 0.35),
-      transparent 60%
-    );
-    pointer-events: none;
-    filter: blur(10px);
-  }
-  .heroGlow::after {
-    content: "";
-    position: absolute;
-    inset: -60px -40px auto -40px;
-    height: 220px;
-    background: radial-gradient(
-      circle at 80% 10%,
-      rgb(var(--accent2) / 0.25),
-      transparent 55%
-    );
-    pointer-events: none;
-    filter: blur(12px);
-  }
-
-  /* Divider upgrade (used by your SectionDivider too) */
-  .divider {
-    @apply w-full py-10;
-  }
-  .dividerLine {
-    @apply h-px w-full;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(var(--divider) / 0.9),
-      transparent
-    );
-  }
-}
-
-/* Better scroll */
-* {
-  scroll-behavior: smooth;
+html.light body {
+  color: rgb(var(--fg));
+  background: rgb(var(--bg0));
 }

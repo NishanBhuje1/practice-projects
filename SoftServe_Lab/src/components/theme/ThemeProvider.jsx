@@ -1,32 +1,19 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-/**
- * Theme model:
- * - "dark"
- * - "light"
- *
- * We apply both:
- * - document.documentElement.classList: "dark" or "light"
- * - localStorage: "theme"
- */
 const ThemeContext = createContext(null);
 
+function getInitialTheme(defaultTheme = "dark") {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") return saved;
+  return defaultTheme;
+}
+
 export function ThemeProvider({ children, defaultTheme = "dark" }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    return saved === "dark" || saved === "light" ? saved : defaultTheme;
-  });
+  const [theme, setTheme] = useState(() => getInitialTheme(defaultTheme));
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("dark", "light");
-    root.classList.add(theme);
+    root.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
@@ -46,8 +33,6 @@ export function ThemeProvider({ children, defaultTheme = "dark" }) {
 
 export function useTheme() {
   const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error("useTheme must be used inside ThemeProvider");
-  }
+  if (!ctx) throw new Error("useTheme must be used inside ThemeProvider");
   return ctx;
 }

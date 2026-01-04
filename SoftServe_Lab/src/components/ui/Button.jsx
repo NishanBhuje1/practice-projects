@@ -1,18 +1,54 @@
-export default function Button({ children, variant = "primary", className = "", ...props }) {
-  const base = "inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-medium transition border";
+export default function Button({
+  children,
+  variant = "primary",
+  className = "",
+  ...props
+}) {
+  const base = `
+    relative inline-flex items-center justify-center
+    px-8 py-3 rounded-full text-sm font-semibold
+    overflow-hidden cursor-pointer select-none
+    transition-transform duration-150
+    active:scale-[0.97]
+  `;
 
-  const styles = {
-    primary:
-      "dark:bg-accent dark:text-text-invert dark:border-accent dark:hover:bg-bg dark:hover:text-accent " +
-      "light:bg-light-accent light:text-light-text-invert light:border-light-accent light:hover:bg-light-bg light:hover:text-light-accent",
-    secondary:
-      "dark:border-border dark:text-text-primary dark:hover:border-accent " +
-      "light:border-light-border light:text-light-text-primary light:hover:border-light-accent",
+  const variants = {
+    primary: `
+      bg-[rgb(var(--surface))]
+      text-[rgb(var(--text-primary))]
+      shadow-[0_6px_20px_-10px_rgba(0,0,0,0.45)]
+      hover:text-[rgb(var(--text-invert))]
+    `,
+    secondary: `
+      bg-transparent
+      text-[rgb(var(--text-primary))]
+      border border-[rgb(var(--border))]
+      hover:border-[rgb(var(--accent))]
+    `,
   };
 
   return (
-    <button className={`${base} ${styles[variant]} ${className}`} {...props}>
-      {children}
+    <button
+      {...props}
+      className={`${base} ${variants[variant]} ${className}`}
+    >
+      {/* Animated gradient glow */}
+      {variant === "primary" && (
+        <span className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+          <span
+            className="
+              w-[10rem] h-[10rem] rounded-full blur-2xl opacity-50
+              bg-[linear-gradient(90deg,#de004b,#bf46ff,#00d4ff)]
+              animate-[spin_3s_linear_infinite]
+              transition-all duration-300
+              group-hover:w-[8rem] group-hover:h-[8rem]
+            "
+          />
+        </span>
+      )}
+
+      {/* Button label */}
+      <span className="relative z-10">{children}</span>
     </button>
   );
 }

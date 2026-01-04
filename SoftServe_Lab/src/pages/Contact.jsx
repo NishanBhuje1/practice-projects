@@ -1,231 +1,198 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import PageSection from "../components/layout/PageSection.jsx";
-import Card from "../components/ui/Card.jsx";
 import Button from "../components/ui/Button.jsx";
-import Input from "../components/ui/Input.jsx";
-import Textarea from "../components/ui/Textarea.jsx";
-
-const API_URL = "http://localhost:5050";
-
-function flattenZodErrors(details) {
-  const fieldErrors = details?.fieldErrors || {};
-  const formErrors = details?.formErrors || [];
-
-  const messages = [];
-
-  for (const [field, errs] of Object.entries(fieldErrors)) {
-    if (Array.isArray(errs) && errs.length) {
-      messages.push(`${field}: ${errs.join(", ")}`);
-    }
-  }
-
-  for (const msg of formErrors) {
-    messages.push(msg);
-  }
-
-  return messages;
-}
 
 export default function Contact() {
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    message: "",
-    companyWebsite: "", // honeypot
-  });
+  const [status, setStatus] = useState({ type: "idle", message: "" });
 
-  const [status, setStatus] = useState("idle"); // idle | loading | success | error
-  const [error, setError] = useState("");
-  const [errorList, setErrorList] = useState([]);
+  const contactEmail = "support@softservelab.com";
+  const phone = "+61 452 508 594";
 
-  function handleChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
+  const mailtoHref = useMemo(() => {
+    const subject = encodeURIComponent("SoftServe Lab — Project enquiry");
+    const body = encodeURIComponent(
+      "Hi SoftServe Lab,\n\nI'm interested in building a web application.\n\nProject details:\n- Timeline:\n- Budget:\n- Requirements:\n\nThanks,\n"
+    );
+    return `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+  }, [contactEmail]);
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
-    setStatus("loading");
-    setError("");
-    setErrorList([]);
 
-    try {
-      const res = await fetch(`${API_URL}/api/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+    // Frontend-only demo (no backend). Replace with your API later.
+    setStatus({
+      type: "success",
+      message: "Message sent. We’ll reply shortly.",
+    });
 
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        const detailsMessages = flattenZodErrors(data?.details);
-        if (detailsMessages.length) {
-          setErrorList(detailsMessages);
-          throw new Error("Please fix the highlighted fields.");
-        }
-        throw new Error(data?.error || "Request failed");
-      }
-
-      setStatus("success");
-      setForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        message: "",
-        companyWebsite: "",
-      });
-    } catch (err) {
-      setStatus("error");
-      setError(err?.message || "Something went wrong. Please try again.");
-    }
+    // Optional: clear form
+    e.currentTarget.reset();
   }
 
   return (
-    <PageSection
-      title="Get in Touch"
-      subtitle="Tell us about your project and we’ll get back to you shortly."
-      stickyHeader
-      showDividerTop
-    >
-      <Card className="p-8 max-w-2xl">
-        {status === "success" ? (
-          <div className="text-center py-10">
-            <h2 className="text-xl font-semibold dark:text-text-primary light:text-light-text-primary">
-              Message sent successfully
+    <div className="bg-softserve min-h-screen relative guide-lines">
+      {/* top dotted strip */}
+      <div className="dotted-strip h-10 w-full" />
+
+      <PageSection id="contact" header="Section: Contact" divider="soft">
+        {/* HERO */}
+        <h1 className="display text-[42px] sm:text-[56px] md:text-[72px] leading-tight text-white/80 max-w-5xl">
+          Let’s Build Something
+          <br />
+          That Scales
+        </h1>
+
+        <div className="mt-6 max-w-2xl text-white/60 text-sm leading-7">
+          Tell us what you’re building. We’ll respond with next steps, a rough
+          timeline, and an implementation approach tailored to your product.
+        </div>
+
+        {/* CONTENT */}
+        <div className="mt-14 grid gap-12 md:grid-cols-12">
+          {/* LEFT: CONTACT DETAILS */}
+          <aside className="md:col-span-4">
+            <h2 className="text-xl font-light tracking-wide text-white/70">
+              Contact Details
             </h2>
-            <p className="mt-2 dark:text-text-secondary light:text-light-text-secondary">
-              We’ll be in touch soon.
-            </p>
 
-            <div className="mt-6">
-              <Button
-                variant="secondary"
-                onClick={() => setStatus("idle")}
-                type="button"
-              >
-                Send another message
-              </Button>
+            <div className="mt-6 space-y-4 text-white/60 text-sm">
+              <div>
+                <div className="text-white/40 text-xs tracking-wide uppercase">
+                  Email
+                </div>
+                <a
+                  className="hover:text-white/80 transition"
+                  href={`mailto:${contactEmail}`}
+                >
+                  {contactEmail}
+                </a>
+              </div>
+
+              <div>
+                <div className="text-white/40 text-xs tracking-wide uppercase">
+                  Phone
+                </div>
+                <a
+                  className="hover:text-white/80 transition"
+                  href={`tel:${phone}`}
+                >
+                  {phone}
+                </a>
+              </div>
+
+              <div>
+                <div className="text-white/40 text-xs tracking-wide uppercase">
+                  Location
+                </div>
+                <div>Ben Boyd Road, Neutral bay, Sydney, Australia</div>
+              </div>
             </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="grid gap-6">
-            {/* Honeypot (hidden) */}
-            <input
-              type="text"
-              name="companyWebsite"
-              value={form.companyWebsite}
-              onChange={handleChange}
-              className="hidden"
-              tabIndex={-1}
-              autoComplete="off"
-            />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <label className="text-sm dark:text-text-secondary light:text-light-text-secondary">
-                  First name
-                </label>
-                <Input
-                  name="firstName"
-                  placeholder="First name"
-                  value={form.firstName}
-                  onChange={handleChange}
-                  required
+            <div className="mt-8">
+              <a
+                href={mailtoHref}
+                className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm
+                           bg-softAccent text-white/90 hover:text-white
+                           hover:bg-softAccentHover transition shadow-soft"
+              >
+                Email Us
+              </a>
+            </div>
+          </aside>
+
+          {/* RIGHT: FORM */}
+          <section className="md:col-span-8">
+            <h2 className="text-xl font-light tracking-wide text-white/70">
+              Send a Message
+            </h2>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 rounded-2xl bg-black/20 ring-1 ring-white/10 p-6 sm:p-8"
+            >
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Full Name" name="name" placeholder="Your name" />
+                <Field
+                  label="Email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <label className="text-sm dark:text-text-secondary light:text-light-text-secondary">
-                  Last name
-                </label>
-                <Input
-                  name="lastName"
-                  placeholder="Last name"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  required
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                <Field
+                  label="Company (optional)"
+                  name="company"
+                  placeholder="Company name"
+                />
+                <Field
+                  label="Budget (optional)"
+                  name="budget"
+                  placeholder="$2,000 – $10,000"
                 />
               </div>
-            </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm dark:text-text-secondary light:text-light-text-secondary">
-                Email
-              </label>
-              <Input
-                type="email"
-                name="email"
-                placeholder="Email address"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-sm dark:text-text-secondary light:text-light-text-secondary">
-                Phone (optional)
-              </label>
-              <Input
-                name="phone"
-                placeholder="Phone (optional)"
-                value={form.phone}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-sm dark:text-text-secondary light:text-light-text-secondary">
-                Message
-              </label>
-              <Textarea
-                name="message"
-                placeholder="Tell us about your project..."
-                value={form.message}
-                onChange={handleChange}
-                required
-              />
-              <p className="text-xs dark:text-text-muted light:text-light-text-muted">
-                Minimum 5 characters.
-              </p>
-            </div>
-
-            {/* Error UI */}
-            {status === "error" && (error || errorList.length > 0) && (
-              <div
-                className="
-                  rounded-xl border p-4
-                  dark:border-border dark:bg-bg
-                  light:border-light-border light:bg-light-bg
-                "
-              >
-                {error ? (
-                  <p className="text-sm font-semibold text-red-600">{error}</p>
-                ) : null}
-
-                {errorList.length > 0 ? (
-                  <ul className="mt-2 list-disc pl-5 text-sm text-red-600 space-y-1">
-                    {errorList.map((m) => (
-                      <li key={m}>{m}</li>
-                    ))}
-                  </ul>
-                ) : null}
+              <div className="mt-5">
+                <label className="block text-white/50 text-xs tracking-wide uppercase mb-2">
+                  Message
+                </label>
+                <textarea
+                  name="message"
+                  required
+                  rows={6}
+                  placeholder="Describe what you want to build, key features, and timeline…"
+                  className="w-full rounded-xl bg-black/30 ring-1 ring-white/10
+                             px-4 py-3 text-sm text-white/80 placeholder:text-white/30
+                             focus:outline-none focus:ring-2 focus:ring-softAccent/50"
+                />
               </div>
-            )}
 
-            <Button type="submit" disabled={status === "loading"}>
-              {status === "loading" ? "Sending..." : "Send Message"}
-            </Button>
+              {/* STATUS */}
+              {status.type !== "idle" && (
+                <div
+                  className={`mt-5 text-sm ${
+                    status.type === "success"
+                      ? "text-emerald-300/80"
+                      : "text-red-300/80"
+                  }`}
+                >
+                  {status.message}
+                </div>
+              )}
 
-            <p className="text-xs dark:text-text-muted light:text-light-text-muted">
-              By submitting, you agree to be contacted regarding your request.
-            </p>
-          </form>
-        )}
-      </Card>
-    </PageSection>
+              <div className="mt-7 flex flex-wrap items-center gap-4">
+                <Button type="submit">Send Message</Button>
+
+                <div className="text-xs text-white/40 leading-5">
+                  By submitting, you agree we may contact you back about your
+                  enquiry.
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      </PageSection>
+    </div>
+  );
+}
+
+/** Small reusable input field */
+function Field({ label, name, type = "text", placeholder = "" }) {
+  return (
+    <div>
+      <label className="block text-white/50 text-xs tracking-wide uppercase mb-2">
+        {label}
+      </label>
+      <input
+        name={name}
+        type={type}
+        required={name === "name" || name === "email"}
+        placeholder={placeholder}
+        className="w-full rounded-xl bg-black/30 ring-1 ring-white/10
+                   px-4 py-3 text-sm text-white/80 placeholder:text-white/30
+                   focus:outline-none focus:ring-2 focus:ring-softAccent/50"
+      />
+    </div>
   );
 }

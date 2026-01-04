@@ -4,12 +4,10 @@ import AnimatedRoutes from "./components/router/AnimatedRoutes.jsx";
 
 export default function App() {
   return (
-    <div className="min-h-screen">
+    <>
       <Navbar />
-      <main>
-        <AnimatedRoutes />
-      </main>
+      <AnimatedRoutes />
       <Footer />
-    </div>
+    </>
   );
 }

@@ -5,30 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark (default)
-        bg: "rgb(5, 19, 25)",
-        surface: "rgb(12, 28, 36)",
-        border: "rgb(51, 64, 71)",
-        accent: "rgb(188, 200, 208)",
-        text: {
-          primary: "rgb(188, 200, 208)",
-          secondary: "rgb(142, 155, 162)",
-          muted: "rgb(97, 110, 117)",
-          invert: "rgb(5, 19, 25)",
-        },
+        bg: "rgb(var(--bg))",
+        surface: "rgb(var(--surface))",
+        border: "rgb(var(--border))",
+        accent: "rgb(var(--accent))",
 
-        // Light mode palette
-        light: {
-          bg: "rgb(250, 251, 252)",
-          surface: "rgb(255, 255, 255)",
-          border: "rgb(226, 232, 240)",
-          accent: "rgb(15, 23, 42)",
-          text: {
-            primary: "rgb(15, 23, 42)",
-            secondary: "rgb(71, 85, 105)",
-            muted: "rgb(100, 116, 139)",
-            invert: "rgb(250, 251, 252)",
-          },
+        text: {
+          primary: "rgb(var(--text-primary))",
+          secondary: "rgb(var(--text-secondary))",
+          muted: "rgb(var(--text-muted))",
+          invert: "rgb(var(--text-invert))",
         },
       },
       fontFamily: {
