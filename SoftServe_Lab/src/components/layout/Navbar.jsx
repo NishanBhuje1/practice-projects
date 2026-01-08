@@ -79,7 +79,7 @@ export default function Navbar() {
     { label: "About", to: "/about" },
     { label: "Contact", to: "/contact" },
     { label: "Book", to: "/book" },
-    { label: "Admin", to: "/admin" },
+    // { label: "Admin", to: "/admin" },
   ];
 
   return (

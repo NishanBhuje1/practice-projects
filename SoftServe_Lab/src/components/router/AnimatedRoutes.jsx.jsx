@@ -7,7 +7,7 @@ import Portfolio from "../../pages/Portfolio.jsx";
 import Blog from "../../pages/Blog.jsx";
 import Contact from "../../pages/Contact.jsx";
 import Book from "../../pages/Book.jsx";
-import Admin from "../../pages/Admin.jsx";
+// import Admin from "../../pages/Admin.jsx";
 
 function Page({ children }) {
   return (
@@ -76,14 +76,14 @@ export default function AnimatedRoutes() {
             </Page>
           }
         />
-        <Route
+        {/* <Route
           path="/admin"
           element={
             <Page>
               <Admin />
             </Page>
           }
-        />
+        /> */}
       </Routes>
     </AnimatePresence>
   );
