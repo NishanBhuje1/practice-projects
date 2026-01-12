@@ -76,9 +76,12 @@ export default function Navbar() {
 
   const links = [
     { label: "Home", to: "/" },
-    { label: "About", to: "/about" },
+    
+    { label: "Pricing", to: "/pricing" },
+
     { label: "Contact", to: "/contact" },
-    { label: "Book", to: "/book" },
+    { label: "About", to: "/about" },
+    // { label: "Book", to: "/book" },
     // { label: "Admin", to: "/admin" },
   ];
 

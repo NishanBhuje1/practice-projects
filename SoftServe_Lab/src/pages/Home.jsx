@@ -50,8 +50,8 @@ export default function Home() {
               <Button>Get in Touch</Button>
             </Link>
 
-            <Link to="/book">
-              <Button variant="secondary">Book a Call</Button>
+            <Link to="/pricing">
+              <Button variant="secondary">Pricing</Button>
             </Link>
           </div>
         </div>

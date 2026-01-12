@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation } from "react-router-dom";
+import Pricing from "../../pages/Pricing.jsx";
 
 import Home from "../../pages/Home.jsx";
 import About from "../../pages/About.jsx";
@@ -68,14 +69,23 @@ export default function AnimatedRoutes() {
             </Page>
           }
         />
-        <Route
+        {/* <Route
           path="/book"
           element={
             <Page>
               <Book />
             </Page>
           }
+        /> */}
+        <Route
+          path="/pricing"
+          element={
+            <Page>
+              <Pricing />
+            </Page>
+          }
         />
+
         {/* <Route
           path="/admin"
           element={
