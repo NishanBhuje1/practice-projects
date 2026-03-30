@@ -3,9 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --bg0: 5 20 25; /* black pearl */
-  --bg1: 10 30 45; /* navy */
-  --fg: 230 235 240; /* soft white */
+  /* Light Mode (Base) */
+  --bg0: 250 250 250;
+  /* very light grey/white */
+  --bg1: 240 242 245;
+  /* light grey */
+  --fg: 15 23 42;
+  /* darker slate for better contrast */
+  --muted: 71 85 105;
+  /* darker muted text */
+  --accent: 109 98 255;
+}
+
+.dark {
+  /* Dark Mode (Original) */
+  --bg0: 5 20 25;
+  /* black pearl */
+  --bg1: 10 30 45;
+  /* navy */
+  --fg: 230 235 240;
+  /* soft white */
   --muted: 170 180 190;
   --accent: 109 98 255;
 }

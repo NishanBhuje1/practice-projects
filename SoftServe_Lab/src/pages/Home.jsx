@@ -7,16 +7,16 @@ function ExpertiseRow({ title, desc }) {
     <div className="grid gap-6 md:grid-cols-12 items-end">
       <div className="md:col-span-5">
         <div className="flex items-start gap-4">
-          <div className="mt-2 h-10 w-10 rounded-xl bg-white/5 ring-1 ring-white/10" />
-          <h3 className="text-2xl font-light text-white/90 leading-snug">
+          <div className="mt-2 h-10 w-10 rounded-xl bg-[rgb(var(--fg))]/5 ring-1 ring-[rgb(var(--fg))]/10" />
+          <h3 className="text-2xl font-light text-[rgb(var(--fg))]/90 leading-snug">
             {title}
           </h3>
         </div>
       </div>
-      <p className="md:col-span-7 text-sm leading-6 text-white/60 max-w-xl md:justify-self-end">
+      <p className="md:col-span-7 text-sm leading-6 text-[rgb(var(--fg))]/60 max-w-xl md:justify-self-end">
         {desc}
       </p>
-      <div className="md:col-span-12 mt-8 h-px bg-white/10" />
+      <div className="md:col-span-12 mt-8 h-px bg-[rgb(var(--fg))]/10" />
     </div>
   );
 }
@@ -35,11 +35,11 @@ export default function Home() {
         contentClassName="pt-6 pb-12 md:pt-8 md:pb-14" // <-- controls gap now
       >
         <div className="text-center">
-          <p className="text-sm tracking-[0.18em] uppercase text-white/60">
+          <p className="text-sm tracking-[0.18em] uppercase text-[rgb(var(--fg))]/60">
             Empowering Businesses with Modern Web Applications
           </p>
 
-          <h2 className="display text-[52px] sm:text-[72px] md:text-[88px] text-white/80 mt-6">
+          <h2 className="display text-[52px] sm:text-[72px] md:text-[88px] text-[rgb(var(--fg))]/80 mt-6">
             Crafting Innovative
             <br />
             Solutions
@@ -67,13 +67,13 @@ export default function Home() {
       >
         <div className="grid gap-12 md:grid-cols-12 items-center">
           <div className="md:col-span-5">
-            <h2 className="display text-5xl md:text-6xl text-white/70">
+            <h2 className="display text-5xl md:text-6xl text-[rgb(var(--fg))]/70">
               About SoftServe
               <br />
               Lab
             </h2>
 
-            <p className="mt-8 text-sm leading-7 text-white/60 max-w-sm">
+            <p className="mt-8 text-sm leading-7 text-[rgb(var(--fg))]/60 max-w-sm">
               SoftServe Lab is a SaaS-focused development studio that designs
               and builds modern web applications with custom frontend, backend
               systems, and scalable cloud infrastructure. We focus on
@@ -105,7 +105,7 @@ export default function Home() {
         className="pt-0"
         contentClassName="py-16 md:py-20"
       >
-        <h2 className="display text-5xl md:text-6xl text-white/70">
+        <h2 className="display text-5xl md:text-6xl text-[rgb(var(--fg))]/70">
           Our Expertise
         </h2>
 

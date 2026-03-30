@@ -36,13 +36,13 @@ export default function Contact() {
 
       <PageSection id="contact" header="Section: Contact" divider="soft">
         {/* HERO */}
-        <h1 className="display text-[42px] sm:text-[56px] md:text-[72px] leading-tight text-white/80 max-w-5xl">
+        <h1 className="display text-[42px] sm:text-[56px] md:text-[72px] leading-tight text-[rgb(var(--fg))]/80 max-w-5xl">
           Let’s Build Something
           <br />
           That Scales
         </h1>
 
-        <div className="mt-6 max-w-2xl text-white/60 text-sm leading-7">
+        <div className="mt-6 max-w-2xl text-[rgb(var(--fg))]/60 text-sm leading-7">
           Tell us what you’re building. We’ll respond with next steps, a rough
           timeline, and an implementation approach tailored to your product.
         </div>
@@ -51,17 +51,17 @@ export default function Contact() {
         <div className="mt-14 grid gap-12 md:grid-cols-12">
           {/* LEFT: CONTACT DETAILS */}
           <aside className="md:col-span-4">
-            <h2 className="text-xl font-light tracking-wide text-white/70">
+            <h2 className="text-xl font-light tracking-wide text-[rgb(var(--fg))]/70">
               Contact Details
             </h2>
 
-            <div className="mt-6 space-y-4 text-white/60 text-sm">
+            <div className="mt-6 space-y-4 text-[rgb(var(--fg))]/60 text-sm">
               <div>
-                <div className="text-white/40 text-xs tracking-wide uppercase">
+                <div className="text-[rgb(var(--fg))]/40 text-xs tracking-wide uppercase">
                   Email
                 </div>
                 <a
-                  className="hover:text-white/80 transition"
+                  className="hover:text-[rgb(var(--fg))]/80 transition"
                   href={`mailto:${contactEmail}`}
                 >
                   {contactEmail}
@@ -69,11 +69,11 @@ export default function Contact() {
               </div>
 
               <div>
-                <div className="text-white/40 text-xs tracking-wide uppercase">
+                <div className="text-[rgb(var(--fg))]/40 text-xs tracking-wide uppercase">
                   Phone
                 </div>
                 <a
-                  className="hover:text-white/80 transition"
+                  className="hover:text-[rgb(var(--fg))]/80 transition"
                   href={`tel:${phone}`}
                 >
                   {phone}
@@ -81,7 +81,7 @@ export default function Contact() {
               </div>
 
               <div>
-                <div className="text-white/40 text-xs tracking-wide uppercase">
+                <div className="text-[rgb(var(--fg))]/40 text-xs tracking-wide uppercase">
                   Location
                 </div>
                 <div>Ben Boyd Road, Neutral bay, Sydney, Australia</div>
@@ -102,13 +102,13 @@ export default function Contact() {
 
           {/* RIGHT: FORM */}
           <section className="md:col-span-8">
-            <h2 className="text-xl font-light tracking-wide text-white/70">
+            <h2 className="text-xl font-light tracking-wide text-[rgb(var(--fg))]/70">
               Send a Message
             </h2>
 
             <form
               onSubmit={handleSubmit}
-              className="mt-6 rounded-2xl bg-black/20 ring-1 ring-white/10 p-6 sm:p-8"
+              className="mt-6 rounded-2xl bg-[rgb(var(--fg))]/5 ring-1 ring-[rgb(var(--fg))]/10 p-6 sm:p-8"
             >
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="Full Name" name="name" placeholder="Your name" />
@@ -134,7 +134,7 @@ export default function Contact() {
               </div>
 
               <div className="mt-5">
-                <label className="block text-white/50 text-xs tracking-wide uppercase mb-2">
+                <label className="block text-[rgb(var(--fg))]/50 text-xs tracking-wide uppercase mb-2">
                   Message
                 </label>
                 <textarea
@@ -142,8 +142,8 @@ export default function Contact() {
                   required
                   rows={6}
                   placeholder="Describe what you want to build, key features, and timeline…"
-                  className="w-full rounded-xl bg-black/30 ring-1 ring-white/10
-                             px-4 py-3 text-sm text-white/80 placeholder:text-white/30
+                  className="w-full rounded-xl bg-[rgb(var(--fg))]/5 ring-1 ring-[rgb(var(--fg))]/10
+                             px-4 py-3 text-sm text-[rgb(var(--fg))]/80 placeholder:text-[rgb(var(--fg))]/30
                              focus:outline-none focus:ring-2 focus:ring-softAccent/50"
                 />
               </div>
@@ -151,11 +151,10 @@ export default function Contact() {
               {/* STATUS */}
               {status.type !== "idle" && (
                 <div
-                  className={`mt-5 text-sm ${
-                    status.type === "success"
-                      ? "text-emerald-300/80"
-                      : "text-red-300/80"
-                  }`}
+                  className={`mt-5 text-sm ${status.type === "success"
+                    ? "text-emerald-300/80"
+                    : "text-red-300/80"
+                    }`}
                 >
                   {status.message}
                 </div>
@@ -164,7 +163,7 @@ export default function Contact() {
               <div className="mt-7 flex flex-wrap items-center gap-4">
                 <Button type="submit">Send Message</Button>
 
-                <div className="text-xs text-white/40 leading-5">
+                <div className="text-xs text-[rgb(var(--fg))]/40 leading-5">
                   By submitting, you agree we may contact you back about your
                   enquiry.
                 </div>
@@ -181,7 +180,7 @@ export default function Contact() {
 function Field({ label, name, type = "text", placeholder = "" }) {
   return (
     <div>
-      <label className="block text-white/50 text-xs tracking-wide uppercase mb-2">
+      <label className="block text-[rgb(var(--fg))]/50 text-xs tracking-wide uppercase mb-2">
         {label}
       </label>
       <input
@@ -189,8 +188,8 @@ function Field({ label, name, type = "text", placeholder = "" }) {
         type={type}
         required={name === "name" || name === "email"}
         placeholder={placeholder}
-        className="w-full rounded-xl bg-black/30 ring-1 ring-white/10
-                   px-4 py-3 text-sm text-white/80 placeholder:text-white/30
+        className="w-full rounded-xl bg-[rgb(var(--fg))]/5 ring-1 ring-[rgb(var(--fg))]/10
+                   px-4 py-3 text-sm text-[rgb(var(--fg))]/80 placeholder:text-[rgb(var(--fg))]/30
                    focus:outline-none focus:ring-2 focus:ring-softAccent/50"
       />
     </div>

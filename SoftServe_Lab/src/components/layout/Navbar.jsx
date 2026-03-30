@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ThemeSwitch from "../theme/ThemeSwitch.jsx";
 
 /* ======================
    Motion Variants (Apple-like)
@@ -76,7 +77,7 @@ export default function Navbar() {
 
   const links = [
     { label: "Home", to: "/" },
-    
+
     { label: "Pricing", to: "/pricing" },
 
     { label: "Contact", to: "/contact" },
@@ -105,6 +106,7 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             {/* Theme slider (outside menu) */}
+            <ThemeSwitch />
 
             <button
               type="button"
