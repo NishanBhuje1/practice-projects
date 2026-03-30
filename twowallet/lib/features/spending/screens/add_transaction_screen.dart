@@ -9,6 +9,7 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/spending_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
@@ -111,6 +112,8 @@ class _AddTransactionScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isFreeAsync = ref.watch(isFreeProvider);
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -139,6 +142,67 @@ class _AddTransactionScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Bank sync banner for free tier
+            isFreeAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (isFree) => isFree
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE1F5EE),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.ours),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.account_balance,
+                                color: AppColors.ours, size: 18),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Connect your bank',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Upgrade to Together to sync transactions automatically',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.push('/paywall'),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                minimumSize: const Size(0, 0),
+                              ),
+                              child: Text(
+                                'Upgrade',
+                                style: TextStyle(color: AppColors.ours),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+
             // Income / Expense toggle
             Container(
               decoration: BoxDecoration(

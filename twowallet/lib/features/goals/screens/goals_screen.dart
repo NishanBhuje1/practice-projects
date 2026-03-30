@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/goal.dart';
 import '../../../data/models/partner.dart';
 import '../providers/goals_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -13,6 +15,7 @@ class GoalsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goalsAsync = ref.watch(goalsProvider);
+    final isFreeAsync = ref.watch(isFreeProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -21,10 +24,37 @@ class GoalsScreen extends ConsumerWidget {
         elevation: 0,
         title: const Text('Goals'),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateGoalSheet(context, ref),
-        backgroundColor: AppColors.ours,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: goalsAsync.when(
+        loading: () => FloatingActionButton(
+          onPressed: null,
+          backgroundColor: AppColors.ours,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+        error: (_, __) => FloatingActionButton(
+          onPressed: () => _showCreateGoalSheet(context, ref),
+          backgroundColor: AppColors.ours,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+        data: (goals) => isFreeAsync.when(
+          loading: () => FloatingActionButton(
+            onPressed: () => _showCreateGoalSheet(context, ref),
+            backgroundColor: AppColors.ours,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+          error: (_, __) => FloatingActionButton(
+            onPressed: () => _showCreateGoalSheet(context, ref),
+            backgroundColor: AppColors.ours,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+          data: (isFree) {
+            final canCreate = !isFree || goals.length < 3;
+            return FloatingActionButton(
+              onPressed: canCreate ? () => _showCreateGoalSheet(context, ref) : () => context.push('/paywall'),
+              backgroundColor: canCreate ? AppColors.ours : Colors.grey.shade400,
+              child: const Icon(Icons.add, color: Colors.white),
+            );
+          },
+        ),
       ),
       body: goalsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
