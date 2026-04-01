@@ -1,9 +1,24 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const links = {
-  Product: ['Features', 'Pricing', 'Money Date', 'Security'],
-  Company: ['About', 'Blog', 'Careers', 'Press'],
-  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
+  Product: [
+    { label: 'Features', to: '#features' },
+    { label: 'Pricing', to: '#pricing' },
+    { label: 'Money Date', to: '#money-date' },
+    { label: 'Security', to: '#' },
+  ],
+  Company: [
+    { label: 'About', to: '#' },
+    { label: 'Blog', to: '#' },
+    { label: 'Careers', to: '#' },
+    { label: 'Press', to: '#' },
+  ],
+  Legal: [
+    { label: 'Privacy Policy', to: '/privacy' },
+    { label: 'Terms of Service', to: '/terms' },
+    { label: 'Cookie Policy', to: '#' },
+  ],
 };
 
 export default function Footer() {
@@ -51,10 +66,16 @@ export default function Footer() {
               <h4 className="font-heading font-semibold text-white text-sm mb-5">{category}</h4>
               <ul className="space-y-3">
                 {items.map((item) => (
-                  <li key={item}>
-                    <a href="#" className="text-sm hover:text-white transition-colors">
-                      {item}
-                    </a>
+                  <li key={item.label}>
+                    {item.to.startsWith('/') ? (
+                      <Link to={item.to} className="text-sm hover:text-white transition-colors">
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <a href={item.to} className="text-sm hover:text-white transition-colors">
+                        {item.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

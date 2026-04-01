@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useFadeIn } from './useFadeIn.js';
 
 export default function Waitlist() {
@@ -111,7 +112,7 @@ export default function Waitlist() {
 
         <p className="fade-in mt-5 text-xs text-gray-400">
           No spam, ever. Unsubscribe at any time. By signing up you agree to our{' '}
-          <a href="#" className="underline hover:text-gray-600">Privacy Policy</a>.
+          <Link to="/privacy" className="underline hover:text-gray-600">Privacy Policy</Link>.
         </p>
 
         {/* Social proof */}
