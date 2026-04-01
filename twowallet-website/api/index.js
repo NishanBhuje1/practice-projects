@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 const DATA_FILE = path.join(__dirname, 'waitlist.json');
 
 app.use(cors());
@@ -32,6 +31,7 @@ app.post('/api/waitlist', (req, res) => {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
   console.log(`[waitlist] New signup: ${email} (total: ${data.emails.length})`);
+
   res.json({ success: true, message: "You're on the list!" });
 });
 
@@ -40,6 +40,4 @@ app.get('/api/waitlist/count', (req, res) => {
   res.json({ count: data.emails.length });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+module.exports = app;
