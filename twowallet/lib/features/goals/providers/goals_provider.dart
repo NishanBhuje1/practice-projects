@@ -6,7 +6,9 @@ import '../../fair_split/providers/fair_split_provider.dart';
 
 final goalRepoProvider = Provider((_) => GoalRepository());
 
-final goalsProvider = FutureProvider<List<Goal>>((ref) {
+final goalsProvider = FutureProvider<List<Goal>>((ref) async {
+  final user = ref.watch(authUserProvider).value;
+  if (user == null) return [];
   return ref.read(goalRepoProvider).fetchActiveGoals();
 });
 

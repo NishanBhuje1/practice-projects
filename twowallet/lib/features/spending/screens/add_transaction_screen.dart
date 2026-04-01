@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/models/transaction.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/spending_provider.dart';
+import '../../analytics/providers/analytics_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
+import '../../../data/services/analytics_service.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
@@ -31,11 +32,16 @@ class _AddTransactionScreenState
   bool _loading = false;
   String? _error;
 
-  final _categories = [
+  static const _expenseCategories = [
     'Groceries', 'Dining Out', 'Rent', 'Utilities',
     'Transport', 'Clothing', 'Health', 'Entertainment',
     'Streaming', 'Subscriptions', 'Food Delivery',
-    'Travel', 'Insurance', 'Income', 'Other',
+    'Travel', 'Insurance', 'Other',
+  ];
+
+  static const _incomeCategories = [
+    'Salary', 'Freelance', 'Rental Income',
+    'Investment Return', 'Gift', 'Refund', 'Other Income',
   ];
 
   @override
@@ -65,7 +71,11 @@ class _AddTransactionScreenState
     final me = partners.where((p) => p.userId == userId).firstOrNull;
     if (me == null) throw Exception('Partner not found');
 
-    final accountId = await _getAccountId(me.id, _bucket);
+    final accountId = await _getOrCreateAccountId(
+      householdId: me.householdId,
+      partnerId: me.id,
+      bucket: _bucket,
+    );
     final now = DateTime.now();
     final dateStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -85,10 +95,19 @@ class _AddTransactionScreenState
       ),
     );
 
+    await AnalyticsService.transactionAdded(_bucket, _category);
+
+    // Spending & home
     ref.invalidate(spendingTransactionsProvider);
     ref.invalidate(recentTransactionsProvider);
-    ref.invalidate(allTransactionsThisMonthProvider);
-    ref.invalidate(fairSplitResultProvider);
+    ref.invalidate(allTransactionsThisMonthProvider); // cascades → bucketTotals, bucketBreakdown, topCategories
+
+    // Fair split — invalidate source so fairSplitResultProvider auto-cascades
+    ref.invalidate(oursTransactionsProvider);
+
+    // Analytics — these use ref.read per month so won't cascade automatically
+    ref.invalidate(monthlyTotalsProvider);
+    ref.invalidate(lastMonthBucketBreakdownProvider);
 
     if (mounted) context.pop();
   } catch (e) {
@@ -98,17 +117,48 @@ class _AddTransactionScreenState
   }
 }
 
-  Future<String> _getAccountId(String partnerId, String bucket) async {
-  final client = Supabase.instance.client;
-  final accounts = await client
-      .from('accounts')
-      .select()
-      .eq('bucket', bucket)
-      .limit(1);
+  Future<String> _getOrCreateAccountId({
+    required String householdId,
+    required String partnerId,
+    required String bucket,
+  }) async {
+    final client = Supabase.instance.client;
 
-  if (accounts.isEmpty) throw Exception('No account found for bucket $bucket');
-  return accounts.first['id'] as String;
-}
+    // Look for an existing manual account for this household + bucket
+    final existing = await client
+        .from('accounts')
+        .select()
+        .eq('household_id', householdId)
+        .eq('bucket', bucket)
+        .eq('is_manual', true)
+        .limit(1);
+
+    if (existing.isNotEmpty) return existing.first['id'] as String;
+
+    // Auto-create a default manual account for this bucket
+    final label = switch (bucket) {
+      'mine' => 'My Wallet',
+      'ours' => 'Joint Wallet',
+      _ => 'Their Wallet',
+    };
+
+    final result = await client
+        .from('accounts')
+        .insert({
+          'household_id': householdId,
+          'partner_id': bucket == 'ours' ? null : partnerId,
+          'bucket': bucket,
+          'institution_name': 'Manual',
+          'account_name': label,
+          'account_type': 'transaction',
+          'balance_aud': 0,
+          'is_manual': true,
+        })
+        .select()
+        .single();
+
+    return result['id'] as String;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +169,7 @@ class _AddTransactionScreenState
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text('Add transaction'),
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -203,54 +254,88 @@ class _AddTransactionScreenState
                   : const SizedBox.shrink(),
             ),
 
-            // Income / Expense toggle
+            // ── Income / Expense toggle ──────────────────────────────────
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(14),
               ),
+              padding: const EdgeInsets.all(4),
               child: Row(
                 children: [
                   _TypeTab(
                     label: 'Expense',
+                    icon: Icons.arrow_upward_rounded,
                     selected: !_isIncome,
-                    onTap: () => setState(() => _isIncome = false),
+                    selectedColor: const Color(0xFFE53935),
+                    onTap: () => setState(() {
+                      _isIncome = false;
+                      // Reset to an expense category if still on an income one
+                      if (_incomeCategories.contains(_category)) {
+                        _category = 'Groceries';
+                      }
+                    }),
                   ),
                   _TypeTab(
                     label: 'Income',
+                    icon: Icons.arrow_downward_rounded,
                     selected: _isIncome,
-                    onTap: () => setState(() => _isIncome = true),
+                    selectedColor: AppColors.ours,
+                    onTap: () => setState(() {
+                      _isIncome = true;
+                      _category = 'Salary';
+                      _bucket = 'mine';
+                    }),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Amount
+            // ── Amount ───────────────────────────────────────────────────────
             TextField(
               controller: _amountController,
               decoration: InputDecoration(
                 labelText: 'Amount',
-                prefixText: '\$ ',
+                prefixText: _isIncome ? '+\$ ' : '-\$ ',
+                prefixStyle: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: _isIncome
+                      ? AppColors.ours
+                      : const Color(0xFFE53935),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _isIncome
+                        ? AppColors.ours
+                        : const Color(0xFFE53935),
+                    width: 1.5,
+                  ),
+                ),
               ),
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 12),
 
-            // Merchant
+            // ── Merchant / description ────────────────────────────────────────
             TextField(
               controller: _merchantController,
               decoration: InputDecoration(
-                labelText: 'Merchant / description',
-                hintText: 'e.g. Woolworths',
+                labelText:
+                    _isIncome ? 'Source / description' : 'Merchant / description',
+                hintText:
+                    _isIncome ? 'e.g. Employer Payroll' : 'e.g. Woolworths',
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -262,56 +347,60 @@ class _AddTransactionScreenState
             ),
             const SizedBox(height: 12),
 
-            // Bucket selector
-            const Text('Bucket',
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Row(
-              children: ['mine', 'ours', 'theirs'].map((b) {
-                final selected = _bucket == b;
-                final color = AppColors.forBucket(b);
-                final light = AppColors.lightForBucket(b);
-                final label = b[0].toUpperCase() + b.substring(1);
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                        right: b != 'theirs' ? 8 : 0),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _bucket = b),
-                      child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: selected ? light : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: selected
-                                ? color
-                                : Colors.grey.shade200,
-                            width: selected ? 1.5 : 0.5,
+            // ── Bucket selector (hidden for income — always "mine") ───────────
+            if (!_isIncome) ...[
+              const Text('Bucket',
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Row(
+                children: ['mine', 'ours', 'theirs'].map((b) {
+                  final selected = _bucket == b;
+                  final color = AppColors.forBucket(b);
+                  final light = AppColors.lightForBucket(b);
+                  final label = b[0].toUpperCase() + b.substring(1);
+                  return Expanded(
+                    child: Padding(
+                      padding:
+                          EdgeInsets.only(right: b != 'theirs' ? 8 : 0),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _bucket = b),
+                        child: Container(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: selected ? light : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  selected ? color : Colors.grey.shade200,
+                              width: selected ? 1.5 : 0.5,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: Text(label,
+                          child: Center(
+                            child: Text(
+                              label,
                               style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: selected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: selected
-                                      ? color
-                                      : Colors.grey.shade500)),
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: selected
+                                    ? color
+                                    : Colors.grey.shade500,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
 
-            // Category
+            // ── Category ──────────────────────────────────────────────────────
             DropdownButtonFormField<String>(
               value: _category,
               decoration: InputDecoration(
@@ -323,9 +412,8 @@ class _AddTransactionScreenState
                   borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
               ),
-              items: _categories
-                  .map((c) =>
-                      DropdownMenuItem(value: c, child: Text(c)))
+              items: (_isIncome ? _incomeCategories : _expenseCategories)
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
               onChanged: (v) => setState(() => _category = v!),
             ),
@@ -359,12 +447,16 @@ class _AddTransactionScreenState
 
 class _TypeTab extends StatelessWidget {
   final String label;
+  final IconData icon;
   final bool selected;
+  final Color selectedColor;
   final VoidCallback onTap;
 
   const _TypeTab({
     required this.label,
+    required this.icon,
     required this.selected,
+    required this.selectedColor,
     required this.onTap,
   });
 
@@ -374,19 +466,29 @@ class _TypeTab extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.ours : Colors.transparent,
+            color: selected ? selectedColor : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Center(
-            child: Text(label,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : Colors.grey.shade500,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
                 style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: selected
-                        ? Colors.white
-                        : Colors.grey.shade500)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: selected ? Colors.white : Colors.grey.shade500,
+                ),
+              ),
+            ],
           ),
         ),
       ),

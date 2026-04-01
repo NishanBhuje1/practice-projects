@@ -7,11 +7,15 @@ import '../../../core/utils/fair_split_calc.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
 
-final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) {
+final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
+  final user = ref.watch(authUserProvider).value;
+  if (user == null) return [];
   return ref.read(transactionRepoProvider).fetchRecent();
 });
 
-final allTransactionsThisMonthProvider = FutureProvider<List<Transaction>>((ref) {
+final allTransactionsThisMonthProvider = FutureProvider<List<Transaction>>((ref) async {
+  final user = ref.watch(authUserProvider).value;
+  if (user == null) return [];
   return ref.read(transactionRepoProvider).fetchThisMonthAll();
 });
 

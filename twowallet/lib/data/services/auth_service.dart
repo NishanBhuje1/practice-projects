@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'revenue_cat_service.dart';
+import 'analytics_service.dart';
 
 class AuthService {
   final _client = SupabaseService.client;
@@ -41,6 +42,8 @@ class AuthService {
         .limit(1);
 
     if (partners.isEmpty) throw Exception('Household creation failed');
+    await AnalyticsService.signupCompleted('partner_a');
+    await AnalyticsService.identify(response.user!.id);
     return partners.first['household_id'] as String;
   }
 
@@ -93,6 +96,10 @@ class AuthService {
           .update({'monthly_income_net_aud': monthlyIncomeNetAud}).eq(
               'user_id', response.user!.id);
     }
+
+    await AnalyticsService.signupCompleted('partner_b');
+    await AnalyticsService.partnerJoined();
+    await AnalyticsService.identify(response.user!.id);
   }
 
   Future<void> signIn({
@@ -105,6 +112,7 @@ class AuthService {
   );
   if (response.user != null) {
     await RevenueCatService.init(response.user!.id);
+    await AnalyticsService.identify(response.user!.id);
   }
 }
 

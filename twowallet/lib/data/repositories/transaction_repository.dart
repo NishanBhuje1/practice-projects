@@ -61,6 +61,22 @@ class TransactionRepository {
     return data.map((e) => Transaction.fromJson(e)).toList();
   }
 
+  Future<List<Transaction>> fetchForMonth(int year, int month) async {
+    final start = '$year-${month.toString().padLeft(2, '0')}-01';
+    final endMonth = month == 12 ? 1 : month + 1;
+    final endYear = month == 12 ? year + 1 : year;
+    final end = '$endYear-${endMonth.toString().padLeft(2, '0')}-01';
+
+    final data = await _client
+        .from('transactions')
+        .select()
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', ascending: false);
+
+    return data.map((e) => Transaction.fromJson(e)).toList();
+  }
+
   Future<Transaction> addTransaction(Transaction tx) async {
     final data = await _client
         .from('transactions')

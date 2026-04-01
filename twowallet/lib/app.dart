@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'shared/providers/auth_provider.dart';
-import 'features/onboarding/screens/welcome_screen.dart';
 import 'features/onboarding/screens/signup_screen.dart';
 import 'features/onboarding/screens/invite_screen.dart';
 import 'features/onboarding/screens/join_screen.dart';
@@ -14,40 +14,52 @@ import 'features/goals/screens/goals_screen.dart';
 import 'features/spending/screens/spending_screen.dart';
 import 'features/money_date/screens/money_date_screen.dart';
 import 'features/spending/screens/add_transaction_screen.dart';
-import 'features/paywall/screens/paywall_screen.dart';
 import 'features/settings/screens/relationship_status_screen.dart';
 import 'features/settings/screens/notification_settings_screen.dart';
+import 'features/paywall/screens/paywall_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/onboarding_controller.dart';
+import 'features/analytics/screens/analytics_screen.dart';
+import 'shared/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/welcome',
-    redirect: (context, state) {
+    initialLocation: '/onboarding',
+    redirect: (context, state) async {
       final authState = ref.watch(authUserProvider);
-
       if (authState.isLoading) return null;
 
       final isLoggedIn = authState.value != null;
-      final isOnboarding = state.matchedLocation.startsWith('/onboarding') ||
-          state.matchedLocation == '/welcome' ||
+      final hasSeenOnboarding = await OnboardingController.hasSeenOnboarding();
+      final isAuthScreen = state.matchedLocation == '/onboarding' ||
+          state.matchedLocation == '/onboarding/signup' ||
           state.matchedLocation == '/signin';
 
-      if (!isLoggedIn && !isOnboarding) return '/welcome';
-      if (isLoggedIn && state.matchedLocation == '/welcome') return '/home';
+      if (!isLoggedIn) {
+        if (!hasSeenOnboarding && state.matchedLocation != '/onboarding') {
+          return '/onboarding';
+        }
+        if (!isAuthScreen) return '/signin';
+        return null;
+      }
+
+      // Logged in
+      if (state.matchedLocation == '/signin') return '/home';
+      if (state.matchedLocation == '/onboarding' ||
+          state.matchedLocation == '/onboarding/signup') {
+        final setupDone = await OnboardingController.hasCompletedSetup();
+        return setupDone ? '/home' : null;
+      }
       return null;
     },
     routes: [
-      GoRoute(path: '/welcome', builder: (_, __) => const WelcomeScreen()),
       GoRoute(
-  path: '/relationship-status',
-  builder: (_, __) => const RelationshipStatusScreen(),
-),
+        path: '/onboarding',
+        builder: (_, __) => const OnboardingScreen(),
+      ),
       GoRoute(
           path: '/onboarding/signup', builder: (_, __) => const SignUpScreen()),
       GoRoute(path: '/signin', builder: (_, __) => const SignInScreen()),
-      GoRoute(
-  path: '/notification-settings',
-  builder: (_, __) => const NotificationSettingsScreen(),
-),
       GoRoute(
         path: '/onboarding/invite',
         builder: (_, state) => InviteScreen(householdId: state.extra as String),
@@ -58,18 +70,38 @@ final routerProvider = Provider<GoRouter>((ref) {
           householdId: state.uri.queryParameters['code'],
         ),
       ),
-      GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-      GoRoute(path: '/spending', builder: (_, __) => const SpendingScreen()),
-      GoRoute(path: '/money-date', builder: (_, __) => const MoneyDateScreen()),
-      GoRoute(
-        path: '/paywall',
-        builder: (_, __) => const PaywallScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/spending', builder: (_, __) => const SpendingScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/fair-split', builder: (_, __) => const FairSplitScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/analytics', builder: (_, __) => const AnalyticsScreen()),
+          ]),
+        ],
       ),
+      GoRoute(path: '/money-date', builder: (_, __) => const MoneyDateScreen()),
       GoRoute(
           path: '/add-transaction',
           builder: (_, __) => const AddTransactionScreen()),
-      GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
-      GoRoute(path: '/fair-split', builder: (_, __) => const FairSplitScreen()),
+      GoRoute(
+          path: '/relationship-status',
+          builder: (_, __) => const RelationshipStatusScreen()),
+      GoRoute(
+          path: '/notification-settings',
+          builder: (_, __) => const NotificationSettingsScreen()),
+      GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
     ],
   );
 });
@@ -82,12 +114,89 @@ class TwoWalletApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     ref.read(deepLinkServiceProvider).init(router);
 
+    final baseTextTheme = GoogleFonts.interTextTheme();
+    final headingStyle = GoogleFonts.plusJakartaSans();
+
     return MaterialApp.router(
       title: 'TwoWallet',
       routerConfig: router,
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF1D9E75),
         useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF1D9E75),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        textTheme: baseTextTheme,
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFFF8F9FA),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          centerTitle: false,
+          titleTextStyle: headingStyle.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+          iconTheme: const IconThemeData(color: Colors.black87),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          margin: EdgeInsets.zero,
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF1D9E75), width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          labelStyle: GoogleFonts.inter(color: Colors.grey.shade600),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF1D9E75),
+          unselectedItemColor: Colors.grey.shade400,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+        ),
+        dividerTheme: DividerThemeData(
+          color: Colors.grey.shade100,
+          thickness: 1,
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../core/utils/fair_split_calc.dart';
@@ -10,12 +11,24 @@ import '../../../data/models/partner.dart';
 import '../providers/fair_split_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../data/repositories/household_repository.dart';
+import '../../../data/services/analytics_service.dart';
 
-class FairSplitScreen extends ConsumerWidget {
+class FairSplitScreen extends ConsumerStatefulWidget {
   const FairSplitScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FairSplitScreen> createState() => _FairSplitScreenState();
+}
+
+class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.fairSplitViewed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final resultAsync = ref.watch(fairSplitResultProvider);
     final partnersAsync = ref.watch(partnersProvider);
     final historyAsync = ref.watch(settlementHistoryProvider);
@@ -60,7 +73,7 @@ class FairSplitScreen extends ConsumerWidget {
                   result.fromPartnerId == partnerA.id ? partnerB : partnerA;
 
               return ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 children: [
                   _SettlementHero(
                     result: result,
@@ -193,6 +206,7 @@ class _SettlementHero extends ConsumerWidget {
   }
 
   void _showSettleSheet(BuildContext context, WidgetRef ref) {
+    AnalyticsService.settleUpTapped();
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(

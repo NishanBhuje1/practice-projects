@@ -31,7 +31,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     setState(() { _loading = true; _error = null; });
 
     try {
-      final householdId = await ref.read(authServiceProvider).signUpPartnerA(
+      await ref.read(authServiceProvider).signUpPartnerA(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         displayName: _nameController.text.trim(),
@@ -39,7 +39,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       );
 
       if (mounted) {
-        context.push('/onboarding/invite', extra: householdId);
+        context.go('/onboarding');
       }
     } catch (e) {
       setState(() { _error = e.toString(); });

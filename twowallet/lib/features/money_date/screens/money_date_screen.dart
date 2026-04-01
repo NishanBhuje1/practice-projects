@@ -5,13 +5,25 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../providers/money_date_provider.dart';
 import '../../../data/services/claude_service.dart';
+import '../../../data/services/analytics_service.dart';
 import '../../../shared/providers/subscription_provider.dart';
 
-class MoneyDateScreen extends ConsumerWidget {
+class MoneyDateScreen extends ConsumerStatefulWidget {
   const MoneyDateScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MoneyDateScreen> createState() => _MoneyDateScreenState();
+}
+
+class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.moneyDateOpened();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final insightsAsync = ref.watch(moneyDateInsightsProvider);
 
     return Scaffold(
@@ -19,6 +31,7 @@ class MoneyDateScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text('Money Date'),
       ),
       body: insightsAsync.when(
@@ -140,7 +153,7 @@ class _StatBox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -166,7 +179,7 @@ class _TalkingPoints extends ConsumerStatefulWidget {
   const _TalkingPoints({required this.insights});
 
   @override
-  State<_TalkingPoints> createState() => _TalkingPointsState();
+  ConsumerState<_TalkingPoints> createState() => _TalkingPointsState();
 }
 
 class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
@@ -259,13 +272,11 @@ class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
                       color: checked ? AppColors.ours : Colors.transparent,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color:
-                            checked ? AppColors.ours : Colors.grey.shade300,
+                        color: checked ? AppColors.ours : Colors.grey.shade300,
                       ),
                     ),
                     child: checked
-                        ? const Icon(Icons.check,
-                            size: 14, color: Colors.white)
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
                         : null,
                   ),
                   const SizedBox(width: 10),
@@ -274,10 +285,8 @@ class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
                       point,
                       style: TextStyle(
                         fontSize: 14,
-                        color:
-                            checked ? Colors.grey.shade400 : Colors.black87,
-                        decoration:
-                            checked ? TextDecoration.lineThrough : null,
+                        color: checked ? Colors.grey.shade400 : Colors.black87,
+                        decoration: checked ? TextDecoration.lineThrough : null,
                       ),
                     ),
                   ),
@@ -349,7 +358,7 @@ class _DecisionPromptState extends State<_DecisionPrompt> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.mine.withOpacity(0.3)),
+        side: BorderSide(color: AppColors.mine.withValues(alpha: 0.3)),
       ),
       color: AppColors.mineLight,
       child: Padding(

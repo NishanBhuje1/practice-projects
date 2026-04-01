@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/analytics_service.dart';
 
 class InviteScreen extends ConsumerWidget {
   final String householdId;
@@ -62,6 +63,7 @@ class InviteScreen extends ConsumerWidget {
                 icon: const Icon(Icons.share),
                 label: const Text('Share invite link'),
                 onPressed: () {
+                  AnalyticsService.partnerInvited();
                   // Share via system share sheet
                   // Add share_plus package when ready
                 },

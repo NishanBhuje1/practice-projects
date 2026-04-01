@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/revenue_cat_service.dart';
+import '../../../data/services/analytics_service.dart';
 
 final packagesProvider = FutureProvider<List<Package>>((ref) {
   return RevenueCatService().getPackages();
@@ -21,12 +22,19 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   String? _error;
   String _selectedTier = 'together';
 
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.paywallViewed('upgrade_button');
+  }
+
   Future<void> _purchase(Package package) async {
     setState(() { _loading = true; _error = null; });
     try {
       final info = await RevenueCatService().purchase(package);
-      if (info.entitlements.active.isNotEmpty && mounted) {
-        context.go('/home');
+      if (info.entitlements.active.isNotEmpty) {
+        await AnalyticsService.subscriptionPurchased(_selectedTier);
+        if (mounted) context.go('/home');
       }
     } catch (e) {
       setState(() => _error = 'Purchase failed — please try again');
@@ -39,11 +47,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final info = await RevenueCatService().restorePurchases();
-      if (info.entitlements.active.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Purchases restored')),
-        );
-        context.go('/home');
+      if (info.entitlements.active.isNotEmpty) {
+        await AnalyticsService.subscriptionRestored();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Purchases restored')),
+          );
+          context.go('/home');
+        }
       } else {
         setState(() => _error = 'No purchases found to restore');
       }

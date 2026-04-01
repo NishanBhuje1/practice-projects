@@ -8,6 +8,7 @@ import '../../../data/models/partner.dart';
 import '../providers/goals_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
+import '../../../data/services/analytics_service.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -17,44 +18,28 @@ class GoalsScreen extends ConsumerWidget {
     final goalsAsync = ref.watch(goalsProvider);
     final isFreeAsync = ref.watch(isFreeProvider);
 
+    final canCreate = goalsAsync.maybeWhen(
+      data: (goals) => isFreeAsync.maybeWhen(
+        data: (isFree) => !isFree || goals.length < 3,
+        orElse: () => true,
+      ),
+      orElse: () => true,
+    );
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
         title: const Text('Goals'),
-      ),
-      floatingActionButton: goalsAsync.when(
-        loading: () => FloatingActionButton(
-          onPressed: null,
-          backgroundColor: AppColors.ours,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        error: (_, __) => FloatingActionButton(
-          onPressed: () => _showCreateGoalSheet(context, ref),
-          backgroundColor: AppColors.ours,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        data: (goals) => isFreeAsync.when(
-          loading: () => FloatingActionButton(
-            onPressed: () => _showCreateGoalSheet(context, ref),
-            backgroundColor: AppColors.ours,
-            child: const Icon(Icons.add, color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => canCreate
+                ? _showCreateGoalSheet(context, ref)
+                : context.push('/paywall'),
           ),
-          error: (_, __) => FloatingActionButton(
-            onPressed: () => _showCreateGoalSheet(context, ref),
-            backgroundColor: AppColors.ours,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-          data: (isFree) {
-            final canCreate = !isFree || goals.length < 3;
-            return FloatingActionButton(
-              onPressed: canCreate ? () => _showCreateGoalSheet(context, ref) : () => context.push('/paywall'),
-              backgroundColor: canCreate ? AppColors.ours : Colors.grey.shade400,
-              child: const Icon(Icons.add, color: Colors.white),
-            );
-          },
-        ),
+        ],
       ),
       body: goalsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -72,7 +57,7 @@ class GoalsScreen extends ConsumerWidget {
                       style: TextStyle(
                           fontSize: 16, color: Colors.grey.shade500)),
                   const SizedBox(height: 8),
-                  Text('Tap + to create your first shared goal',
+                  Text('Tap the + button above to create your first goal',
                       style: TextStyle(
                           fontSize: 13, color: Colors.grey.shade400)),
                 ],
@@ -81,7 +66,7 @@ class GoalsScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
             itemCount: goals.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _GoalCard(goal: goals[i]),
@@ -443,6 +428,7 @@ class _CreateGoalSheetState extends ConsumerState<_CreateGoalSheet> {
       contributionSplit: _splitMethod,
       contributionRatioA: _splitMethod == 'fifty_fifty' ? 0.5 : 0.55,
     );
+    await AnalyticsService.goalCreated();
     if (mounted) Navigator.pop(context);
   }
 

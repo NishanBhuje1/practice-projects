@@ -6,7 +6,6 @@ import '../../../data/models/transaction.dart';
 import '../../../data/models/partner.dart';
 import '../providers/spending_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
-import 'package:go_router/go_router.dart';
 
 class SpendingScreen extends ConsumerWidget {
   const SpendingScreen({super.key});
@@ -18,6 +17,7 @@ class SpendingScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text('Spending'),
       ),
       body: Column(
@@ -26,11 +26,6 @@ class SpendingScreen extends ConsumerWidget {
           _CategorySummary(),
           Expanded(child: _TransactionList()),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/add-transaction'),
-        backgroundColor: AppColors.ours,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -59,9 +54,6 @@ class _BucketFilter extends ConsumerWidget {
           final isSelected = selected == value;
           final color =
               value == null ? Colors.black87 : AppColors.forBucket(value);
-          final lightColor = value == null
-              ? Colors.grey.shade200
-              : AppColors.lightForBucket(value);
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -72,19 +64,15 @@ class _BucketFilter extends ConsumerWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? lightColor : Colors.white,
+                  color: isSelected ? color : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected ? color : Colors.grey.shade200,
-                    width: isSelected ? 1.5 : 0.5,
-                  ),
                 ),
                 child: Text(
                   label,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? color : Colors.grey.shade600,
+                    color: isSelected ? Colors.white : Colors.grey.shade600,
                   ),
                 ),
               ),
@@ -165,7 +153,7 @@ class _CategorySummary extends ConsumerWidget {
                           child: LinearProgressIndicator(
                             value: pct,
                             backgroundColor: Colors.grey.shade100,
-                            valueColor: AlwaysStoppedAnimation(AppColors.ours),
+                            valueColor: const AlwaysStoppedAnimation(AppColors.ours),
                             minHeight: 6,
                           ),
                         ),
@@ -221,7 +209,7 @@ class _TransactionList extends ConsumerWidget {
         final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: dates.length,
           itemBuilder: (_, i) {
             final date = dates[i];
