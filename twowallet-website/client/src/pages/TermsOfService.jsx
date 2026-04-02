@@ -143,37 +143,12 @@ export default function TermsOfService() {
     <p className="text-sm leading-relaxed">
       These terms are governed by the laws of New South Wales, Australia. Any disputes will be subject to the exclusive jurisdiction of the courts of New South Wales.
     </p>
-    <p className="text-sm leading-relaxed mt-3">
-      Before initiating legal proceedings, parties agree to attempt resolution
-      through good faith negotiation for 30 days.
-    </p>
   </section>
 
   <hr className="border-gray-100" />
 
   <section>
-    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">10. Force Majeure</h2>
-    <p className="text-sm leading-relaxed">
-      SoftServe Lab is not liable for any failure to perform due to causes
-      beyond our reasonable control including internet outages, third-party
-      service failures, or natural disasters.
-    </p>
-  </section>
-
-  <hr className="border-gray-100" />
-
-  <section>
-    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">11. Severability</h2>
-    <p className="text-sm leading-relaxed">
-      If any provision of these Terms is found to be unenforceable, the
-      remaining provisions will continue in full force and effect.
-    </p>
-  </section>
-
-  <hr className="border-gray-100" />
-
-  <section>
-    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">12. Contact Us</h2>
+    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">10. Contact Us</h2>
     <p className="text-sm leading-relaxed">
       SoftServe Lab<br />
       Sydney, Australia<br />
