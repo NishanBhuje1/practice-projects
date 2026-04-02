@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import twowalletImg from "../assets/twowallet.webp";
 
 export default function Hero() {
   const ref = useRef(null);
@@ -97,7 +98,7 @@ export default function Hero() {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-gray-900 rounded-b-xl z-10" />
             <div className="w-full h-full rounded-[2.2rem] overflow-hidden bg-black">
               <img
-                src="/assets/twowallet.webp"
+                src={twowalletImg}
                 alt="App UI"
                 className="w-full h-full object-cover"
               />
