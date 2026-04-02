@@ -11,6 +11,7 @@ import Waitlist from './components/Waitlist.jsx';
 import Footer from './components/Footer.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsOfService from './pages/TermsOfService.jsx';
+import DeleteAccount from './pages/DeleteAccount.jsx';
 
 function HomePage() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
       </Routes>
     </BrowserRouter>
   );

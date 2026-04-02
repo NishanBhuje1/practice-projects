@@ -256,9 +256,14 @@ export default function PrivacyPolicy() {
           <span>
             © {new Date().getFullYear()} TwoWallet · SoftServe Lab, Sydney
           </span>
-          <Link to="/terms" className="hover:text-gray-600 transition-colors">
-            Terms of Service →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/delete-account" className="hover:text-gray-600 transition-colors">
+              Delete Account →
+            </Link>
+            <Link to="/terms" className="hover:text-gray-600 transition-colors">
+              Terms of Service →
+            </Link>
+          </div>
         </div>
       </main>
     </div>
