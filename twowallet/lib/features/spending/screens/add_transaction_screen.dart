@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/transaction.dart';
@@ -29,6 +30,7 @@ class _AddTransactionScreenState
   String _bucket = 'ours';
   String _category = 'Groceries';
   bool _isIncome = false;
+  bool _isPrivate = false;
   bool _loading = false;
   String? _error;
 
@@ -92,6 +94,7 @@ class _AddTransactionScreenState
         category: _category,
         date: dateStr,
         isIncome: _isIncome,
+        isPrivate: _isPrivate,
       ),
     );
 
@@ -364,7 +367,10 @@ class _AddTransactionScreenState
                       padding:
                           EdgeInsets.only(right: b != 'theirs' ? 8 : 0),
                       child: GestureDetector(
-                        onTap: () => setState(() => _bucket = b),
+                        onTap: () => setState(() {
+                          _bucket = b;
+                          if (b != 'mine') _isPrivate = false;
+                        }),
                         child: Container(
                           padding:
                               const EdgeInsets.symmetric(vertical: 12),
@@ -397,6 +403,19 @@ class _AddTransactionScreenState
                   );
                 }).toList(),
               ),
+              // Only show for own spending
+              if (_bucket == 'mine')
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Private pocket',
+                      style: GoogleFonts.inter(fontSize: 14)),
+                  subtitle: Text('Hidden from your partner',
+                      style: GoogleFonts.inter(
+                          fontSize: 12, color: Colors.grey.shade500)),
+                  value: _isPrivate,
+                  activeColor: const Color(0xFF1D9E75),
+                  onChanged: (v) => setState(() => _isPrivate = v),
+                ),
               const SizedBox(height: 16),
             ],
 

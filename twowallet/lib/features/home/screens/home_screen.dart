@@ -86,6 +86,14 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const PopupMenuDivider(),
                     const PopupMenuItem<String>(
+                      value: 'settings',
+                      child: Row(children: [
+                        Icon(Icons.settings_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('Settings'),
+                      ]),
+                    ),
+                    const PopupMenuItem<String>(
                       value: 'notifications',
                       child: Row(children: [
                         Icon(Icons.notifications_outlined, size: 18),
@@ -114,6 +122,8 @@ class HomeScreen extends ConsumerWidget {
                   onSelected: (value) async {
                     if (value == 'upgrade') {
                       context.push('/paywall');
+                    } else if (value == 'settings') {
+                      context.push('/settings');
                     } else if (value == 'notifications') {
                       context.push('/notification-settings');
                     } else if (value == 'relationship') {

@@ -16,6 +16,7 @@ import 'features/money_date/screens/money_date_screen.dart';
 import 'features/spending/screens/add_transaction_screen.dart';
 import 'features/settings/screens/relationship_status_screen.dart';
 import 'features/settings/screens/notification_settings_screen.dart';
+import 'features/settings/screens/settings_screen.dart';
 import 'features/paywall/screens/paywall_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/onboarding/onboarding_controller.dart';
@@ -102,6 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/notification-settings',
           builder: (_, __) => const NotificationSettingsScreen()),
       GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
     ],
   );
 });

@@ -110,6 +110,11 @@ export default function PrivacyPolicy() {
                 </li>
                 <li>To sync bank transactions via Basiq CDR</li>
               </ul>
+              <p className="text-sm leading-relaxed mt-3">
+                We use PostHog analytics which may use cookies or similar
+                tracking technologies to analyse app usage. You can opt out by
+                contacting us.
+              </p>
             </section>
 
             <hr className="border-gray-100" />
@@ -142,6 +147,10 @@ export default function PrivacyPolicy() {
                   financial data shared)
                 </li>
               </ul>
+              <p className="text-sm leading-relaxed mt-3">
+                Our app may contain links to third-party services. We are not
+                responsible for the privacy practices of those services.
+              </p>
               <p className="text-sm leading-relaxed mt-3 font-medium text-gray-900">
                 We never sell your data to third parties.
               </p>
@@ -207,7 +216,21 @@ export default function PrivacyPolicy() {
 
             <section>
               <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">
-                8. Contact Us
+                8. Changes to This Policy
+              </h2>
+              <p className="text-sm leading-relaxed">
+                We may update this Privacy Policy from time to time. We will
+                notify you of significant changes via email or in-app
+                notification. Continued use of the app after changes constitutes
+                acceptance.
+              </p>
+            </section>
+
+            <hr className="border-gray-100" />
+
+            <section>
+              <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">
+                9. Contact Us
               </h2>
               <p className="text-sm leading-relaxed">
                 SoftServe Lab

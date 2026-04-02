@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/transaction.dart';
@@ -24,6 +25,7 @@ class SpendingScreen extends ConsumerWidget {
         children: [
           _BucketFilter(),
           _CategorySummary(),
+          _PrivatePocketSummary(),
           Expanded(child: _TransactionList()),
         ],
       ),
@@ -369,6 +371,75 @@ class _TxRow extends StatelessWidget {
               endIndent: 16,
               color: Colors.grey.shade100),
       ],
+    );
+  }
+}
+
+// ── Private pocket summary ────────────────────────────────────────────────────
+
+class _PrivatePocketSummary extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Not relevant when viewing the shared 'ours' bucket
+    final selectedBucket = ref.watch(selectedBucketProvider);
+    if (selectedBucket == 'ours') return const SizedBox.shrink();
+
+    final transactionsAsync = ref.watch(spendingTransactionsProvider);
+    final partnersAsync = ref.watch(partnersProvider);
+
+    return transactionsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (transactions) {
+        final partners = partnersAsync.value ?? [];
+        final userId = ref.watch(authUserProvider).value?.id;
+        final me = partners.where((p) => p.userId == userId).firstOrNull;
+        if (me == null) return const SizedBox.shrink();
+
+        final myPrivateSpent = transactions
+            .where((t) => t.isPrivate && t.partnerId == me.id)
+            .fold(0.0, (s, t) => s + t.amountAud.abs());
+
+        if (myPrivateSpent == 0) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.lock_outline,
+                  size: 16, color: Color(0xFF1D9E75)),
+              const SizedBox(width: 8),
+              Text('Private pocket',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Text(
+                myPrivateSpent.toAUD(showCents: false),
+                style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87),
+              ),
+              const SizedBox(width: 4),
+              Text('this month',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500)),
+            ],
+          ),
+        );
+      },
     );
   }
 }

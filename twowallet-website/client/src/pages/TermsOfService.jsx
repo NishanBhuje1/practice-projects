@@ -49,11 +49,16 @@ export default function TermsOfService() {
   <hr className="border-gray-100" />
 
   <section>
-    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">2. Description of Service</h2>
-    <p className="text-sm leading-relaxed">
-      TwoWallet is a personal finance management app for couples provided by SoftServe Lab, Sydney, Australia. The app is intended for personal, non-commercial use only. TwoWallet is a financial management tool — we do not provide financial, legal, or tax advice. Always consult a qualified financial adviser for financial decisions.
-    </p>
-  </section>
+  <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">2. Description of Service</h2>
+  <p className="text-sm leading-relaxed">
+    TwoWallet is a personal finance management app for couples provided by 
+    SoftServe Lab (ABN: 40 254 617 430), based in Sydney, Australia. 
+    The app is intended for personal, non-commercial use only. TwoWallet 
+    is a financial management tool — we do not provide financial, legal, 
+    or tax advice. Always consult a qualified financial adviser for 
+    financial decisions.
+  </p>
+</section>
 
   <hr className="border-gray-100" />
 
@@ -94,6 +99,11 @@ export default function TermsOfService() {
       <li>Refunds are handled in accordance with Apple App Store and Google Play Store policies</li>
       <li>Prices include GST where applicable</li>
     </ul>
+    <p className="text-sm leading-relaxed mt-3">
+      To cancel your subscription, manage it through your Google Play or Apple
+      App Store account settings. Cancellation takes effect at the end of the
+      current billing period. No refunds for partial periods.
+    </p>
   </section>
 
   <hr className="border-gray-100" />
@@ -133,12 +143,37 @@ export default function TermsOfService() {
     <p className="text-sm leading-relaxed">
       These terms are governed by the laws of New South Wales, Australia. Any disputes will be subject to the exclusive jurisdiction of the courts of New South Wales.
     </p>
+    <p className="text-sm leading-relaxed mt-3">
+      Before initiating legal proceedings, parties agree to attempt resolution
+      through good faith negotiation for 30 days.
+    </p>
   </section>
 
   <hr className="border-gray-100" />
 
   <section>
-    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">10. Contact Us</h2>
+    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">10. Force Majeure</h2>
+    <p className="text-sm leading-relaxed">
+      SoftServe Lab is not liable for any failure to perform due to causes
+      beyond our reasonable control including internet outages, third-party
+      service failures, or natural disasters.
+    </p>
+  </section>
+
+  <hr className="border-gray-100" />
+
+  <section>
+    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">11. Severability</h2>
+    <p className="text-sm leading-relaxed">
+      If any provision of these Terms is found to be unenforceable, the
+      remaining provisions will continue in full force and effect.
+    </p>
+  </section>
+
+  <hr className="border-gray-100" />
+
+  <section>
+    <h2 className="font-heading font-bold text-xl text-gray-900 mb-3">12. Contact Us</h2>
     <p className="text-sm leading-relaxed">
       SoftServe Lab<br />
       Sydney, Australia<br />
