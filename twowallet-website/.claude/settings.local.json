@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git:*)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Nishan\\\\Documents\\\\practice-projects\\\\twowallet-website\\\\client\\\\src\\\\assets\")",
+      "Bash(cp \"C:\\\\Users\\\\Nishan\\\\Documents\\\\practice-projects\\\\twowallet-website\\\\client\\\\public\\\\assets\\\\twowallet.webp\" \"C:\\\\Users\\\\Nishan\\\\Documents\\\\practice-projects\\\\twowallet-website\\\\client\\\\src\\\\assets\\\\twowallet.webp\")"
     ]
   }
 }
