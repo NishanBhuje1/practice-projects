@@ -1,7 +1,7 @@
 name: twowallet
 description: Mine. Yours. Ours.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.0+4
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -41,6 +41,7 @@ dependencies:
   app_links: ^6.1.1
   http: ^1.2.0
 
+  url_launcher: ^6.3.0
   google_fonts: ^6.2.1
   fl_chart: ^0.69.0
   shared_preferences: ^2.3.2

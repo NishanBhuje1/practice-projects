@@ -113,4 +113,11 @@ class TransactionRepository {
         .update({'category': category})
         .eq('id', transactionId);
   }
+
+  Future<void> deleteTransaction(String transactionId) async {
+    await _client
+        .from('transactions')
+        .delete()
+        .eq('id', transactionId);
+  }
 }

@@ -1,32 +1,58 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Three-bucket brand colors
-  static const mine = Color(0xFF378ADD);
-  static const ours = Color(0xFF1D9E75);
-  static const theirs = Color(0xFFBA7517);
+  // ── System backgrounds ────────────────────────────────────────────────────
+  static const background = Color(0xFFF2F2F7);   // iOS grouped background
+  static const surface    = Color(0xFFFFFFFF);
 
-  // Light fills (for badges, backgrounds)
-  static const mineLight = Color(0xFFE6F1FB);
-  static const oursLight = Color(0xFFE1F5EE);
-  static const theirsLight = Color(0xFFFAEEDA);
+  // ── Text ──────────────────────────────────────────────────────────────────
+  static const textPrimary   = Color(0xFF1C1C1E);
+  static const textSecondary = Color(0xFF8E8E93);
+  static const textTertiary  = Color(0xFFC7C7CC);
 
-  // Dark text on light fills
-  static const mineDark = Color(0xFF0C447C);
-  static const oursDark = Color(0xFF085041);
-  static const theirsDark = Color(0xFF633806);
+  // ── Separators ────────────────────────────────────────────────────────────
+  static const separator       = Color(0xFFC6C6C8);
+  static const separatorOpaque = Color(0xFFE5E5EA);
 
+  // ── Three-bucket brand colors ─────────────────────────────────────────────
+  static const mine   = Color(0xFF3D5A80);  // warm slate blue
+  static const ours   = Color(0xFF5C8A6E);  // sage green — shared, growing
+  static const theirs = Color(0xFFA0785A);  // warm terracotta — the other person
+
+  // ── Light fills (10 % tint of bucket color on white) ─────────────────────
+  static const mineLight   = Color(0xFFECF0F5);
+  static const oursLight   = Color(0xFFEEF4F0);
+  static const theirsLight = Color(0xFFF5EFE9);
+
+  // ── Dark text on light fills ──────────────────────────────────────────────
+  static const mineDark   = Color(0xFF1E3A5F);
+  static const oursDark   = Color(0xFF2D5940);
+  static const theirsDark = Color(0xFF5C3D26);
+
+  // ── System semantic colors ────────────────────────────────────────────────
+  static const success     = Color(0xFF34C759);  // iOS system green
+  static const destructive = Color(0xFFFF3B30);  // iOS system red
+  static const warning     = Color(0xFFFF9500);  // iOS system orange
+
+  // ── Convenience helpers ───────────────────────────────────────────────────
   static Color forBucket(String bucket) => switch (bucket) {
-        'mine' => mine,
-        'ours' => ours,
-        'theirs' => theirs,
-        _ => Colors.grey,
-      };
+    'mine'   => mine,
+    'ours'   => ours,
+    'theirs' => theirs,
+    _        => Colors.grey,
+  };
 
   static Color lightForBucket(String bucket) => switch (bucket) {
-        'mine' => mineLight,
-        'ours' => oursLight,
-        'theirs' => theirsLight,
-        _ => Colors.grey.shade100,
-      };
+    'mine'   => mineLight,
+    'ours'   => oursLight,
+    'theirs' => theirsLight,
+    _        => const Color(0xFFF2F2F7),
+  };
+
+  static Color darkForBucket(String bucket) => switch (bucket) {
+    'mine'   => mineDark,
+    'ours'   => oursDark,
+    'theirs' => theirsDark,
+    _        => Colors.grey.shade700,
+  };
 }

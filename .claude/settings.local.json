@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(flutter analyze:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(flutter pub:*)"
     ]
   }
 }

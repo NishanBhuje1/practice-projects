@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/transaction.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
@@ -13,6 +15,13 @@ import '../../analytics/providers/analytics_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
 import '../../../data/services/analytics_service.dart';
 
+// ════════════════════════════════════════════════════════════════════════════
+// AddTransactionScreen
+// Purpose: Full-screen sheet for logging a new transaction. Amount entry uses
+//          a custom numpad (never the system keyboard). Merchant and notes use
+//          the system keyboard — the numpad slides away automatically.
+// ════════════════════════════════════════════════════════════════════════════
+
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
 
@@ -21,24 +30,29 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
       _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState
-    extends ConsumerState<AddTransactionScreen> {
+class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
+    with SingleTickerProviderStateMixin {
+  // ── Form state ────────────────────────────────────────────────────────────
   final _merchantController = TextEditingController();
-  final _amountController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _notesController    = TextEditingController();
+  final _merchantFocus      = FocusNode();
 
-  String _bucket = 'ours';
-  String _category = 'Groceries';
-  bool _isIncome = false;
-  bool _isPrivate = false;
-  bool _loading = false;
+  String _amountString = '0';
+  String _bucket       = 'ours';
+  String _category     = 'Groceries';
+  bool   _isIncome     = false;
+  bool   _isPrivate    = false;
+  bool   _loading      = false;
+  bool   _showSuccess  = false;
   String? _error;
 
+  // ── Keyboard visibility via FocusNode ─────────────────────────────────────
+  bool _merchantFocused = false;
+
   static const _expenseCategories = [
-    'Groceries', 'Dining Out', 'Rent', 'Utilities',
-    'Transport', 'Clothing', 'Health', 'Entertainment',
-    'Streaming', 'Subscriptions', 'Food Delivery',
-    'Travel', 'Insurance', 'Other',
+    'Groceries', 'Dining Out', 'Rent', 'Utilities', 'Transport',
+    'Clothing', 'Health', 'Entertainment', 'Streaming', 'Subscriptions',
+    'Food Delivery', 'Travel', 'Insurance', 'Other',
   ];
 
   static const _incomeCategories = [
@@ -46,79 +60,149 @@ class _AddTransactionScreenState
     'Investment Return', 'Gift', 'Refund', 'Other Income',
   ];
 
+  double get _amount => double.tryParse(_amountString) ?? 0.0;
+  bool get _canSubmit => _amount > 0 && !_loading;
+
+  // ── Icons per category ────────────────────────────────────────────────────
+  static const _categoryIcons = <String, IconData>{
+    'Groceries':        Icons.shopping_basket_outlined,
+    'Dining Out':       Icons.restaurant_outlined,
+    'Rent':             Icons.home_outlined,
+    'Utilities':        Icons.bolt_outlined,
+    'Transport':        Icons.directions_car_outlined,
+    'Clothing':         Icons.checkroom_outlined,
+    'Health':           Icons.favorite_outline,
+    'Entertainment':    Icons.movie_outlined,
+    'Streaming':        Icons.play_circle_outline,
+    'Subscriptions':    Icons.subscriptions_outlined,
+    'Food Delivery':    Icons.delivery_dining_outlined,
+    'Travel':           Icons.flight_outlined,
+    'Insurance':        Icons.security_outlined,
+    'Other':            Icons.more_horiz_outlined,
+    'Salary':           Icons.account_balance_outlined,
+    'Freelance':        Icons.laptop_outlined,
+    'Rental Income':    Icons.home_work_outlined,
+    'Investment Return':Icons.trending_up_outlined,
+    'Gift':             Icons.card_giftcard_outlined,
+    'Refund':           Icons.replay_outlined,
+    'Other Income':     Icons.attach_money_outlined,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _merchantFocus.addListener(() {
+      setState(() => _merchantFocused = _merchantFocus.hasFocus);
+    });
+  }
+
   @override
   void dispose() {
     _merchantController.dispose();
-    _amountController.dispose();
     _notesController.dispose();
+    _merchantFocus.dispose();
     super.dispose();
   }
 
+  // ── Numpad input ──────────────────────────────────────────────────────────
+
+  void _onNumpadKey(String key) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _error = null;
+      if (key == '⌫') {
+        if (_amountString.length > 1) {
+          _amountString = _amountString.substring(0, _amountString.length - 1);
+        } else {
+          _amountString = '0';
+        }
+      } else if (key == '.') {
+        if (!_amountString.contains('.')) _amountString += '.';
+      } else {
+        // digit
+        if (_amountString == '0') {
+          _amountString = key;
+        } else if (_amountString.contains('.')) {
+          final parts = _amountString.split('.');
+          if (parts[1].length < 2) _amountString += key;
+        } else {
+          if (_amountString.length < 7) _amountString += key;
+        }
+      }
+    });
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   Future<void> _submit() async {
-  if (_merchantController.text.isEmpty) {
-    setState(() => _error = 'Enter a merchant name');
-    return;
-  }
-  final amount = double.tryParse(_amountController.text);
-  if (amount == null || amount <= 0) {
-    setState(() => _error = 'Enter a valid amount');
-    return;
-  }
+    if (_amount <= 0) {
+      setState(() => _error = 'Enter an amount');
+      return;
+    }
+    if (_merchantController.text.trim().isEmpty) {
+      setState(() => _error = 'Enter a merchant name');
+      _merchantFocus.requestFocus();
+      return;
+    }
 
-  setState(() { _loading = true; _error = null; });
+    HapticFeedback.mediumImpact();
+    setState(() { _loading = true; _error = null; });
 
-  try {
-    final partners = await ref.read(partnersProvider.future);
-    final userId = ref.read(authUserProvider).value?.id;
-    final me = partners.where((p) => p.userId == userId).firstOrNull;
-    if (me == null) throw Exception('Partner not found');
+    try {
+      final partners = await ref.read(partnersProvider.future);
+      final userId   = ref.read(authUserProvider).value?.id;
+      final me       = partners.where((p) => p.userId == userId).firstOrNull;
+      if (me == null) throw Exception('Partner not found');
 
-    final accountId = await _getOrCreateAccountId(
-      householdId: me.householdId,
-      partnerId: me.id,
-      bucket: _bucket,
-    );
-    final now = DateTime.now();
-    final dateStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-    await ref.read(transactionRepoProvider).addTransaction(
-      Transaction(
-        id: '',
+      final accountId = await _getOrCreateAccountId(
         householdId: me.householdId,
-        accountId: accountId,
-        partnerId: me.id,
-        bucket: _bucket,
-        amountAud: amount,
-        merchantName: _merchantController.text.trim(),
-        category: _category,
-        date: dateStr,
-        isIncome: _isIncome,
-        isPrivate: _isPrivate,
-      ),
-    );
+        partnerId:   me.id,
+        bucket:      _bucket,
+      );
 
-    await AnalyticsService.transactionAdded(_bucket, _category);
+      final now     = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
 
-    // Spending & home
-    ref.invalidate(spendingTransactionsProvider);
-    ref.invalidate(recentTransactionsProvider);
-    ref.invalidate(allTransactionsThisMonthProvider); // cascades → bucketTotals, bucketBreakdown, topCategories
+      await ref.read(transactionRepoProvider).addTransaction(
+        Transaction(
+          id:           '',
+          householdId:  me.householdId,
+          accountId:    accountId,
+          partnerId:    me.id,
+          bucket:       _bucket,
+          amountAud:    _amount,
+          merchantName: _merchantController.text.trim(),
+          category:     _category,
+          date:         dateStr,
+          isIncome:     _isIncome,
+          isPrivate:    _isPrivate,
+          notes:        _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        ),
+      );
 
-    // Fair split — invalidate source so fairSplitResultProvider auto-cascades
-    ref.invalidate(oursTransactionsProvider);
+      await AnalyticsService.transactionAdded(_bucket, _category);
 
-    // Analytics — these use ref.read per month so won't cascade automatically
-    ref.invalidate(monthlyTotalsProvider);
-    ref.invalidate(lastMonthBucketBreakdownProvider);
+      ref.invalidate(spendingTransactionsProvider);
+      ref.invalidate(recentTransactionsProvider);
+      ref.invalidate(allTransactionsThisMonthProvider);
+      ref.invalidate(oursTransactionsProvider);
+      ref.invalidate(monthlyTotalsProvider);
+      ref.invalidate(lastMonthBucketBreakdownProvider);
+      ref.invalidate(fairSplitResultProvider);
 
-    if (mounted) context.pop();
-  } catch (e) {
-    setState(() => _error = e.toString());
-  } finally {
-    setState(() => _loading = false);
+      HapticFeedback.mediumImpact();
+      setState(() { _showSuccess = true; _loading = false; });
+
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (mounted) context.pop();
+    } catch (e) {
+      HapticFeedback.vibrate();
+      setState(() { _error = e.toString(); _loading = false; });
+    }
   }
-}
 
   Future<String> _getOrCreateAccountId({
     required String householdId,
@@ -127,7 +211,6 @@ class _AddTransactionScreenState
   }) async {
     final client = Supabase.instance.client;
 
-    // Look for an existing manual account for this household + bucket
     final existing = await client
         .from('accounts')
         .select()
@@ -138,24 +221,23 @@ class _AddTransactionScreenState
 
     if (existing.isNotEmpty) return existing.first['id'] as String;
 
-    // Auto-create a default manual account for this bucket
     final label = switch (bucket) {
-      'mine' => 'My Wallet',
-      'ours' => 'Joint Wallet',
-      _ => 'Their Wallet',
+      'mine'   => 'My Wallet',
+      'ours'   => 'Joint Wallet',
+      _        => 'Their Wallet',
     };
 
     final result = await client
         .from('accounts')
         .insert({
-          'household_id': householdId,
-          'partner_id': bucket == 'ours' ? null : partnerId,
-          'bucket': bucket,
-          'institution_name': 'Manual',
-          'account_name': label,
-          'account_type': 'transaction',
-          'balance_aud': 0,
-          'is_manual': true,
+          'household_id':    householdId,
+          'partner_id':      bucket == 'ours' ? null : partnerId,
+          'bucket':          bucket,
+          'institution_name':'Manual',
+          'account_name':    label,
+          'account_type':    'transaction',
+          'balance_aud':     0,
+          'is_manual':       true,
         })
         .select()
         .single();
@@ -163,300 +245,152 @@ class _AddTransactionScreenState
     return result['id'] as String;
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final isFreeAsync = ref.watch(isFreeProvider);
+    final bucketColor = AppColors.forBucket(_bucket);
+    final categories  = _isIncome ? _incomeCategories : _expenseCategories;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.grey.shade50,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text('Add transaction'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _loading ? null : _submit,
-            child: _loading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save'),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        bottom: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Bank sync banner for free tier
-            isFreeAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (isFree) => isFree
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE1F5EE),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.ours),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.account_balance,
-                                color: AppColors.ours, size: 18),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Connect your bank',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Upgrade to Together to sync transactions automatically',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => context.push('/paywall'),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                minimumSize: const Size(0, 0),
-                              ),
-                              child: Text(
-                                'Upgrade',
-                                style: TextStyle(color: AppColors.ours),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+            // ── Top bar ───────────────────────────────────────────────
+            _TopBar(
+              onClose: () => context.pop(),
+              isIncome: _isIncome,
+              onToggle: (income) => setState(() {
+                _isIncome = income;
+                _category = income ? 'Salary' : 'Groceries';
+                if (income) _bucket = 'mine';
+              }),
             ),
 
-            // ── Income / Expense toggle ──────────────────────────────────
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              padding: const EdgeInsets.all(4),
-              child: Row(
-                children: [
-                  _TypeTab(
-                    label: 'Expense',
-                    icon: Icons.arrow_upward_rounded,
-                    selected: !_isIncome,
-                    selectedColor: const Color(0xFFE53935),
-                    onTap: () => setState(() {
-                      _isIncome = false;
-                      // Reset to an expense category if still on an income one
-                      if (_incomeCategories.contains(_category)) {
-                        _category = 'Groceries';
-                      }
-                    }),
-                  ),
-                  _TypeTab(
-                    label: 'Income',
-                    icon: Icons.arrow_downward_rounded,
-                    selected: _isIncome,
-                    selectedColor: AppColors.ours,
-                    onTap: () => setState(() {
-                      _isIncome = true;
-                      _category = 'Salary';
-                      _bucket = 'mine';
-                    }),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Amount ───────────────────────────────────────────────────────
-            TextField(
-              controller: _amountController,
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                prefixText: _isIncome ? '+\$ ' : '-\$ ',
-                prefixStyle: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _isIncome
-                      ? AppColors.ours
-                      : const Color(0xFFE53935),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: _isIncome
-                        ? AppColors.ours
-                        : const Color(0xFFE53935),
-                    width: 1.5,
-                  ),
-                ),
-              ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Merchant / description ────────────────────────────────────────
-            TextField(
-              controller: _merchantController,
-              decoration: InputDecoration(
-                labelText:
-                    _isIncome ? 'Source / description' : 'Merchant / description',
-                hintText:
-                    _isIncome ? 'e.g. Employer Payroll' : 'e.g. Woolworths',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 12),
-
-            // ── Bucket selector (hidden for income — always "mine") ───────────
-            if (!_isIncome) ...[
-              const Text('Bucket',
-                  style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Row(
-                children: ['mine', 'ours', 'theirs'].map((b) {
-                  final selected = _bucket == b;
-                  final color = AppColors.forBucket(b);
-                  final light = AppColors.lightForBucket(b);
-                  final label = b[0].toUpperCase() + b.substring(1);
-                  return Expanded(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.only(right: b != 'theirs' ? 8 : 0),
-                      child: GestureDetector(
-                        onTap: () => setState(() {
+            // ── Scrollable content ────────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Bucket selector (hidden for income)
+                    if (!_isIncome) ...[
+                      _BucketSelector(
+                        selected: _bucket,
+                        onSelect: (b) => setState(() {
                           _bucket = b;
                           if (b != 'mine') _isPrivate = false;
                         }),
-                        child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: selected ? light : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                                  selected ? color : Colors.grey.shade200,
-                              width: selected ? 1.5 : 0.5,
-                            ),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else
+                      const SizedBox(height: 8),
+
+                    // Amount display
+                    _AmountDisplay(
+                      amountString: _amountString,
+                      isIncome: _isIncome,
+                      color: bucketColor,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Merchant field
+                    _MerchantField(
+                      controller: _merchantController,
+                      focusNode: _merchantFocus,
+                      isIncome: _isIncome,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Category chips
+                    _CategoryChips(
+                      categories: categories,
+                      selected: _category,
+                      icons: _categoryIcons,
+                      color: bucketColor,
+                      onSelect: (c) => setState(() => _category = c),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Notes field (compact)
+                    _NotesField(controller: _notesController),
+
+                    // Private toggle (mine only)
+                    if (_bucket == 'mine' && !_isIncome)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            'Private pocket',
+                            style: GoogleFonts.inter(
+                                fontSize: 14, color: AppColors.textPrimary),
                           ),
-                          child: Center(
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: selected
-                                    ? color
-                                    : Colors.grey.shade500,
-                              ),
-                            ),
+                          subtitle: Text(
+                            'Hidden from your partner',
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
+                          value: _isPrivate,
+                          activeColor: AppColors.mine,
+                          onChanged: (v) => setState(() => _isPrivate = v),
                         ),
                       ),
+
+                    // Error
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      _ErrorBanner(error: _error!),
+                    ],
+
+                    // Spacer for when keyboard is up
+                    SizedBox(
+                      height: _merchantFocused
+                          ? MediaQuery.of(context).viewInsets.bottom + 16
+                          : 0,
                     ),
-                  );
-                }).toList(),
-              ),
-              // Only show for own spending
-              if (_bucket == 'mine')
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Private pocket',
-                      style: GoogleFonts.inter(fontSize: 14)),
-                  subtitle: Text('Hidden from your partner',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: Colors.grey.shade500)),
-                  value: _isPrivate,
-                  activeColor: const Color(0xFF1D9E75),
-                  onChanged: (v) => setState(() => _isPrivate = v),
-                ),
-              const SizedBox(height: 16),
-            ],
-
-            // ── Category ──────────────────────────────────────────────────────
-            DropdownButtonFormField<String>(
-              value: _category,
-              decoration: InputDecoration(
-                labelText: 'Category',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-              ),
-              items: (_isIncome ? _incomeCategories : _expenseCategories)
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _category = v!),
-            ),
-            const SizedBox(height: 12),
-
-            // Notes
-            TextField(
-              controller: _notesController,
-              decoration: InputDecoration(
-                labelText: 'Notes (optional)',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
+                  ],
                 ),
               ),
             ),
 
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(_error!,
-                  style: const TextStyle(color: Colors.red)),
-            ],
+            // ── Numpad (hidden when merchant keyboard is up) ──────────
+            AnimatedCrossFade(
+              firstChild: _NumPad(onKey: _onNumpadKey),
+              secondChild: const SizedBox.shrink(),
+              crossFadeState: _merchantFocused
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+              firstCurve: Curves.easeOut,
+              secondCurve: Curves.easeIn,
+              sizeCurve: Curves.easeInOut,
+            ),
+
+            // ── Confirm button ────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20, 8, 20,
+                (_merchantFocused
+                    ? MediaQuery.of(context).viewInsets.bottom + 8
+                    : MediaQuery.of(context).padding.bottom + 12),
+              ),
+              child: _ConfirmButton(
+                canSubmit: _canSubmit,
+                loading: _loading,
+                showSuccess: _showSuccess,
+                isIncome: _isIncome,
+                color: bucketColor,
+                onTap: _canSubmit ? _submit : null,
+              ),
+            ),
           ],
         ),
       ),
@@ -464,16 +398,82 @@ class _AddTransactionScreenState
   }
 }
 
-class _TypeTab extends StatelessWidget {
+// ── Top bar ───────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  final VoidCallback onClose;
+  final bool isIncome;
+  final ValueChanged<bool> onToggle;
+
+  const _TopBar({
+    required this.onClose,
+    required this.isIncome,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: AppColors.separatorOpaque,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+            ),
+            onPressed: onClose,
+          ),
+
+          Expanded(
+            child: Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.separatorOpaque,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ToggleTab(
+                      label: 'Expense',
+                      selected: !isIncome,
+                      selectedColor: AppColors.destructive,
+                      onTap: () => onToggle(false),
+                    ),
+                    _ToggleTab(
+                      label: 'Income',
+                      selected: isIncome,
+                      selectedColor: AppColors.success,
+                      onTap: () => onToggle(true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 46), // balance close button
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleTab extends StatelessWidget {
   final String label;
-  final IconData icon;
   final bool selected;
   final Color selectedColor;
   final VoidCallback onTap;
 
-  const _TypeTab({
+  const _ToggleTab({
     required this.label,
-    required this.icon,
     required this.selected,
     required this.selectedColor,
     required this.onTap,
@@ -481,36 +481,565 @@ class _TypeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? selectedColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: selected ? Colors.white : Colors.grey.shade500,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: selected ? Colors.white : Colors.grey.shade500,
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: selected
+              ? [BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                )]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? selectedColor : AppColors.textSecondary,
           ),
         ),
       ),
     );
+  }
+}
+
+// ── Bucket selector ───────────────────────────────────────────────────────────
+
+class _BucketSelector extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  const _BucketSelector({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: ['mine', 'ours', 'theirs'].map((b) {
+        final isSelected = b == selected;
+        final color      = AppColors.forBucket(b);
+        final lightColor = AppColors.lightForBucket(b);
+        final label      = b[0].toUpperCase() + b.substring(1);
+
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: b != 'theirs' ? 10 : 0),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onSelect(b);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: isSelected ? lightColor : AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? color : AppColors.separatorOpaque,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isSelected ? color : AppColors.separator,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected ? color : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ── Amount display ────────────────────────────────────────────────────────────
+
+class _AmountDisplay extends StatelessWidget {
+  final String amountString;
+  final bool isIncome;
+  final Color color;
+
+  const _AmountDisplay({
+    required this.amountString,
+    required this.isIncome,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final amount     = double.tryParse(amountString) ?? 0;
+    final hasAmount  = amount > 0;
+    final sign       = isIncome ? '+' : '-';
+    final signColor  = isIncome ? AppColors.success : AppColors.destructive;
+
+    // Format display: show raw string while entering, formatted when done
+    final displayText = amountString.contains('.')
+        ? amountString
+        : (hasAmount
+            ? NumberFormat.currency(
+                symbol: '',
+                decimalDigits: 0,
+              ).format(amount)
+            : '0');
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '\$ ',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 22,
+            fontWeight: FontWeight.w400,
+            color: hasAmount ? AppColors.textSecondary : AppColors.textTertiary,
+          ),
+        ),
+        Text(
+          displayText,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 52,
+            fontWeight: FontWeight.w700,
+            color: hasAmount ? AppColors.textPrimary : AppColors.textTertiary,
+            letterSpacing: -2,
+          ),
+        ),
+        if (hasAmount)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              sign,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: signColor,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Merchant field ────────────────────────────────────────────────────────────
+
+class _MerchantField extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool isIncome;
+
+  const _MerchantField({
+    required this.controller,
+    required this.focusNode,
+    required this.isIncome,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      textCapitalization: TextCapitalization.words,
+      style: GoogleFonts.inter(
+        fontSize: 16,
+        color: AppColors.textPrimary,
+      ),
+      decoration: InputDecoration(
+        hintText: isIncome ? 'Source (e.g. Employer)' : 'Merchant (e.g. Woolworths)',
+        hintStyle: GoogleFonts.inter(
+          fontSize: 16,
+          color: AppColors.textTertiary,
+        ),
+        prefixIcon: Icon(
+          isIncome ? Icons.business_outlined : Icons.store_outlined,
+          size: 20,
+          color: AppColors.textSecondary,
+        ),
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.mine, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+}
+
+// ── Category chips ────────────────────────────────────────────────────────────
+
+class _CategoryChips extends StatelessWidget {
+  final List<String> categories;
+  final String selected;
+  final Map<String, IconData> icons;
+  final Color color;
+  final ValueChanged<String> onSelect;
+
+  const _CategoryChips({
+    required this.categories,
+    required this.selected,
+    required this.icons,
+    required this.color,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final cat        = categories[i];
+          final isSelected = cat == selected;
+          final icon       = icons[cat] ?? Icons.label_outline;
+          final lightColor = Color.lerp(color, Colors.white, 0.85)!;
+
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onSelect(cat);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? color : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? color : AppColors.separatorOpaque,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 13,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    cat,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Notes field ───────────────────────────────────────────────────────────────
+
+class _NotesField extends StatelessWidget {
+  final TextEditingController controller;
+  const _NotesField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+      maxLines: 1,
+      decoration: InputDecoration(
+        hintText: 'Notes (optional)',
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textTertiary),
+        prefixIcon: const Icon(Icons.notes_outlined,
+            size: 18, color: AppColors.textSecondary),
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.mine, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    );
+  }
+}
+
+// ── Error banner ──────────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String error;
+  const _ErrorBanner({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.destructive.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.destructive.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 16, color: AppColors.destructive),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              error,
+              style: GoogleFonts.inter(
+                  fontSize: 13, color: AppColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Custom numpad ─────────────────────────────────────────────────────────────
+
+class _NumPad extends StatelessWidget {
+  final ValueChanged<String> onKey;
+  const _NumPad({required this.onKey});
+
+  static const _keys = [
+    ['7', '8', '9'],
+    ['4', '5', '6'],
+    ['1', '2', '3'],
+    ['.', '0', '⌫'],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: _keys.map((row) => SizedBox(
+          height: 60,
+          child: Row(
+            children: row.map((key) => Expanded(
+              child: _NumPadKey(
+                label: key,
+                onTap: () => onKey(key),
+              ),
+            )).toList(),
+          ),
+        )).toList(),
+      ),
+    );
+  }
+}
+
+class _NumPadKey extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _NumPadKey({required this.label, required this.onTap});
+
+  @override
+  State<_NumPadKey> createState() => _NumPadKeyState();
+}
+
+class _NumPadKeyState extends State<_NumPadKey> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isBackspace = widget.label == '⌫';
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        margin: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _pressed
+              ? AppColors.separator
+              : isBackspace
+                  ? AppColors.separatorOpaque
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: _pressed
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: Center(
+          child: isBackspace
+              ? const Icon(Icons.backspace_outlined,
+                  size: 20, color: AppColors.textSecondary)
+              : Text(
+                  widget.label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Confirm button ────────────────────────────────────────────────────────────
+
+class _ConfirmButton extends StatelessWidget {
+  final bool canSubmit;
+  final bool loading;
+  final bool showSuccess;
+  final bool isIncome;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _ConfirmButton({
+    required this.canSubmit,
+    required this.loading,
+    required this.showSuccess,
+    required this.isIncome,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          color: canSubmit
+              ? (showSuccess ? AppColors.success : color)
+              : AppColors.separatorOpaque,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: canSubmit
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: loading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : showSuccess
+                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 26)
+                  : Text(
+                      isIncome ? 'Add Income' : 'Add Expense',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: canSubmit ? Colors.white : AppColors.textSecondary,
+                      ),
+                    ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Needed for amount display formatting ─────────────────────────────────────
+
+class NumberFormat {
+  static _Formatter currency({String symbol = '\$', int decimalDigits = 2}) {
+    return _Formatter(symbol: symbol, decimalDigits: decimalDigits);
+  }
+}
+
+class _Formatter {
+  final String symbol;
+  final int decimalDigits;
+  const _Formatter({required this.symbol, required this.decimalDigits});
+
+  String format(double value) {
+    final parts = value.toStringAsFixed(decimalDigits).split('.');
+    final intPart = parts[0];
+    final decPart = decimalDigits > 0 ? '.${parts[1]}' : '';
+
+    // Add commas
+    final buffer = StringBuffer();
+    for (int i = 0; i < intPart.length; i++) {
+      if (i > 0 && (intPart.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(intPart[i]);
+    }
+    return '$symbol$buffer$decPart';
   }
 }

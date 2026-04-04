@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -61,6 +62,22 @@ class SettingsScreen extends ConsumerWidget {
                       fontSize: 12, color: Colors.grey.shade500)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/relationship-status'),
+            ),
+          ),
+          _SectionHeader(title: 'Account'),
+          Container(
+            color: Colors.white,
+            child: ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: Text('Delete account',
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.red)),
+              subtitle: Text('Permanently delete your account and all data',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500)),
+              onTap: () => launchUrl(
+                Uri.parse('https://twowallet.app/delete-account'),
+                mode: LaunchMode.externalApplication,
+              ),
             ),
           ),
         ],

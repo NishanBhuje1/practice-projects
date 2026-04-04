@@ -208,3 +208,9 @@ All code must compile successfully.
 Provider: PostHog
 API Key env var: POSTHOG_API_KEY
 Events tracked: signup_completed, partner_invited, transaction_added, goal_created, paywall_viewed, subscription_purchased
+
+## Design Standards
+Apply frontend-design skill for all UI work.
+Target audience: couples 25–40, managing money together.
+Design language: warm, modern, trustworthy. Think Monzo meets Notion.
+Avoid: corporate, sterile, or generic fintech aesthetics.
