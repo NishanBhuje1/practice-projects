@@ -61,9 +61,9 @@ class _TransactionDetailSheetState
   };
 
   String get _bucketLabel => switch (widget.tx.bucket) {
-    'mine'   => 'Mine',
-    'ours'   => 'Ours',
-    'theirs' => 'Theirs',
+    'mine'   => 'My spending',
+    'ours'   => 'Our spending',
+    'theirs' => "Partner's spending",
     _        => widget.tx.bucket,
   };
 
@@ -334,9 +334,9 @@ class _HeroSection extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 switch (tx.bucket) {
-                  'mine'   => 'Mine',
-                  'ours'   => 'Ours',
-                  'theirs' => 'Theirs',
+                  'mine'   => 'My spending',
+                  'ours'   => 'Our spending',
+                  'theirs' => "Partner's spending",
                   _        => tx.bucket,
                 },
                 style: GoogleFonts.inter(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/goal.dart';
@@ -31,7 +32,8 @@ class GoalsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
-        title: const Text('Goals'),
+        title: Text('Goals',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -80,6 +82,7 @@ class GoalsScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -138,6 +141,7 @@ error: (_, __) => _GoalCardShell(goal: goal, partnerATot: 0, partnerBTotal: 0),
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

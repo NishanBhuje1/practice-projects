@@ -230,21 +230,21 @@ class _MonthlyTrendCard extends ConsumerWidget {
                     spots: spots,
                     isCurved: true,
                     curveSmoothness: 0.3,
-                    color: const Color(0xFF1D9E75),
+                    color: AppColors.ours,
                     barWidth: 2.5,
                     isStrokeCapRound: true,
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
                         radius: 4,
-                        color: const Color(0xFF1D9E75),
+                        color: AppColors.ours,
                         strokeWidth: 2,
                         strokeColor: Colors.white,
                       ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF1D9E75).withValues(alpha: 0.08),
+                      color: AppColors.ours.withValues(alpha: 0.08),
                     ),
                   ),
                 ],
@@ -277,21 +277,21 @@ class _DonutCard extends ConsumerWidget {
           final sections = [
             if (bd.mine > 0)
               PieChartSectionData(
-                color: const Color(0xFF378ADD),
+                color: AppColors.mine,
                 value: bd.mine,
                 radius: 36,
                 title: '',
               ),
             if (bd.ours > 0)
               PieChartSectionData(
-                color: const Color(0xFF1D9E75),
+                color: AppColors.ours,
                 value: bd.ours,
                 radius: 36,
                 title: '',
               ),
             if (bd.theirs > 0)
               PieChartSectionData(
-                color: const Color(0xFFBA7517),
+                color: AppColors.theirs,
                 value: bd.theirs,
                 radius: 36,
                 title: '',
@@ -341,20 +341,20 @@ class _DonutCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _DonutLegend(
-                    color: const Color(0xFF378ADD),
-                    label: 'Mine',
+                    color: AppColors.mine,
+                    label: 'My spending',
                     amount: bd.mine,
                     pct: bd.total > 0 ? bd.mine / bd.total : 0,
                   ),
                   _DonutLegend(
-                    color: const Color(0xFF1D9E75),
-                    label: 'Ours',
+                    color: AppColors.ours,
+                    label: 'Our spending',
                     amount: bd.ours,
                     pct: bd.total > 0 ? bd.ours / bd.total : 0,
                   ),
                   _DonutLegend(
-                    color: const Color(0xFFBA7517),
-                    label: 'Theirs',
+                    color: AppColors.theirs,
+                    label: "Partner's spending",
                     amount: bd.theirs,
                     pct: bd.total > 0 ? bd.theirs / bd.total : 0,
                   ),
@@ -502,7 +502,7 @@ class _TopCategoriesCard extends ConsumerWidget {
                                 child: Container(
                                   height: 8,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1D9E75),
+                                    color: AppColors.ours,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -547,7 +547,7 @@ class _ComparisonCard extends ConsumerWidget {
                 : null;
             final increased = pctChange != null && pctChange > 0;
             final changeColor =
-                increased ? Colors.orange.shade600 : const Color(0xFF1D9E75);
+                increased ? Colors.orange.shade600 : AppColors.ours;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,21 +617,21 @@ class _ComparisonCard extends ConsumerWidget {
                 Divider(height: 1, color: Colors.grey.shade100),
                 const SizedBox(height: 16),
                 _BucketCompRow(
-                  label: 'Mine',
+                  label: 'My spending',
                   color: AppColors.mine,
                   thisMonth: thisMonth.mine,
                   lastMonth: lastMonth.mine,
                 ),
                 const SizedBox(height: 12),
                 _BucketCompRow(
-                  label: 'Ours',
+                  label: 'Our spending',
                   color: AppColors.ours,
                   thisMonth: thisMonth.ours,
                   lastMonth: lastMonth.ours,
                 ),
                 const SizedBox(height: 12),
                 _BucketCompRow(
-                  label: 'Theirs',
+                  label: "Partner's spending",
                   color: AppColors.theirs,
                   thisMonth: thisMonth.theirs,
                   lastMonth: lastMonth.theirs,
@@ -663,7 +663,7 @@ class _BucketCompRow extends StatelessWidget {
     final diff = thisMonth - lastMonth;
     final increased = diff > 0;
     final arrowColor =
-        increased ? Colors.orange.shade600 : const Color(0xFF1D9E75);
+        increased ? Colors.orange.shade600 : AppColors.ours;
 
     return Row(
       children: [

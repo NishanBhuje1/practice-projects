@@ -15,19 +15,19 @@ class AppColors {
   static const separatorOpaque = Color(0xFFE5E5EA);
 
   // ── Three-bucket brand colors ─────────────────────────────────────────────
-  static const mine   = Color(0xFF3D5A80);  // warm slate blue
-  static const ours   = Color(0xFF5C8A6E);  // sage green — shared, growing
-  static const theirs = Color(0xFFA0785A);  // warm terracotta — the other person
+  static const mine   = Color(0xFF3B82F6);  // vivid blue — my spending
+  static const ours   = Color(0xFF22C55E);  // vivid green — our spending
+  static const theirs = Color(0xFFF97316);  // vivid orange — partner's spending
 
-  // ── Light fills (10 % tint of bucket color on white) ─────────────────────
-  static const mineLight   = Color(0xFFECF0F5);
-  static const oursLight   = Color(0xFFEEF4F0);
-  static const theirsLight = Color(0xFFF5EFE9);
+  // ── Light fills (tint of bucket color on white) ───────────────────────────
+  static const mineLight   = Color(0xFFEFF6FF);
+  static const oursLight   = Color(0xFFF0FDF4);
+  static const theirsLight = Color(0xFFFFF7ED);
 
   // ── Dark text on light fills ──────────────────────────────────────────────
-  static const mineDark   = Color(0xFF1E3A5F);
-  static const oursDark   = Color(0xFF2D5940);
-  static const theirsDark = Color(0xFF5C3D26);
+  static const mineDark   = Color(0xFF1D4ED8);
+  static const oursDark   = Color(0xFF15803D);
+  static const theirsDark = Color(0xFFC2410C);
 
   // ── System semantic colors ────────────────────────────────────────────────
   static const success     = Color(0xFF34C759);  // iOS system green

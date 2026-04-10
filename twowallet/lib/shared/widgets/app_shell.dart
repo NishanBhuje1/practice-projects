@@ -9,123 +9,102 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final index = navigationShell.currentIndex;
     return Scaffold(
       extendBody: true,
       body: navigationShell,
-      floatingActionButton: _CenterFab(
-        onPressed: () => context.push('/add-transaction'),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Nav bar container — RepaintBoundary isolates repaints to
+              // just the changed _NavItem instead of the whole Scaffold.
+              RepaintBoundary(
+              child: Container(
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                _NavItem(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: 'Home',
-                  selected: navigationShell.currentIndex == 0,
-                  onTap: () => navigationShell.goBranch(0,
-                      initialLocation: navigationShell.currentIndex == 0),
+                child: Row(
+                  children: [
+                    _NavItem(
+                      icon: Icons.home_outlined,
+                      activeIcon: Icons.home_rounded,
+                      label: 'Home',
+                      selected: index == 0,
+                      onTap: () => navigationShell.goBranch(0,
+                          initialLocation: index == 0),
+                    ),
+                    _NavItem(
+                      icon: Icons.receipt_long_outlined,
+                      activeIcon: Icons.receipt_long_rounded,
+                      label: 'Spending',
+                      selected: index == 1,
+                      onTap: () => navigationShell.goBranch(1,
+                          initialLocation: index == 1),
+                    ),
+                    // Empty center space for FAB
+                    const Expanded(child: SizedBox()),
+                    _NavItem(
+                      icon: Icons.flag_outlined,
+                      activeIcon: Icons.flag_rounded,
+                      label: 'Goals',
+                      selected: index == 3,
+                      onTap: () => navigationShell.goBranch(3,
+                          initialLocation: index == 3),
+                    ),
+                    _NavItem(
+                      icon: Icons.bar_chart_outlined,
+                      activeIcon: Icons.bar_chart_rounded,
+                      label: 'Analytics',
+                      selected: index == 4,
+                      onTap: () => navigationShell.goBranch(4,
+                          initialLocation: index == 4),
+                    ),
+                  ],
                 ),
-                _NavItem(
-                  icon: Icons.receipt_long_outlined,
-                  activeIcon: Icons.receipt_long_rounded,
-                  label: 'Spending',
-                  selected: navigationShell.currentIndex == 1,
-                  onTap: () => navigationShell.goBranch(1,
-                      initialLocation: navigationShell.currentIndex == 1),
+              ),
+              ), // RepaintBoundary
+              // Center FAB floating above nav bar
+              Positioned(
+                top: -20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => context.push('/add-transaction'),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppColors.ours,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.ours.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.add, color: Colors.white, size: 26),
+                    ),
+                  ),
                 ),
-                _NavItem(
-                  icon: Icons.balance_outlined,
-                  activeIcon: Icons.balance_rounded,
-                  label: 'Fair split',
-                  selected: navigationShell.currentIndex == 2,
-                  onTap: () => navigationShell.goBranch(2,
-                      initialLocation: navigationShell.currentIndex == 2),
-                ),
-                _NavItem(
-                  icon: Icons.flag_outlined,
-                  activeIcon: Icons.flag_rounded,
-                  label: 'Goals',
-                  selected: navigationShell.currentIndex == 3,
-                  onTap: () => navigationShell.goBranch(3,
-                      initialLocation: navigationShell.currentIndex == 3),
-                ),
-                _NavItem(
-                  icon: Icons.bar_chart_outlined,
-                  activeIcon: Icons.bar_chart_rounded,
-                  label: 'Analytics',
-                  selected: navigationShell.currentIndex == 4,
-                  onTap: () => navigationShell.goBranch(4,
-                      initialLocation: navigationShell.currentIndex == 4),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Center FAB ────────────────────────────────────────────────────────────────
-
-class _CenterFab extends StatefulWidget {
-  final VoidCallback onPressed;
-  const _CenterFab({required this.onPressed});
-
-  @override
-  State<_CenterFab> createState() => _CenterFabState();
-}
-
-class _CenterFabState extends State<_CenterFab> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.91 : 1.0,
-        duration: const Duration(milliseconds: 130),
-        curve: Curves.easeInOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 130),
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.ours,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.ours.withValues(alpha: _pressed ? 0.2 : 0.38),
-                blurRadius: _pressed ? 8 : 18,
-                offset: Offset(0, _pressed ? 2 : 4),
               ),
             ],
           ),
-          child: const Icon(Icons.add, color: Colors.white, size: 24),
         ),
       ),
     );

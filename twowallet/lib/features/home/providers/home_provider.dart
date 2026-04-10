@@ -1,11 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/repositories/transaction_repository.dart';
-import '../../../data/repositories/household_repository.dart';
 import '../../../data/models/transaction.dart';
-import '../../../data/models/partner.dart';
-import '../../../core/utils/fair_split_calc.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../shared/providers/auth_provider.dart';
-import '../../fair_split/providers/fair_split_provider.dart';
+import '../../../shared/providers/repo_providers.dart';
 
 final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
   final user = ref.watch(authUserProvider).value;
@@ -47,11 +44,11 @@ final bucketTotalsProvider = FutureProvider<BucketTotals>((ref) async {
   double theirs = 0;
 
   for (final t in expenses) {
-    if (t.bucket == 'mine' && t.partnerId == myPartnerId) {
+    if (t.bucket == Bucket.mine.value && t.partnerId == myPartnerId) {
       mine += t.amountAud.abs();
-    } else if (t.bucket == 'ours') {
+    } else if (t.bucket == Bucket.ours.value) {
       ours += t.amountAud.abs();
-    } else if (t.bucket == 'theirs' && t.partnerId != myPartnerId) {
+    } else if (t.bucket == Bucket.theirs.value && t.partnerId != myPartnerId) {
       theirs += t.amountAud.abs();
     }
   }

@@ -17,7 +17,7 @@ class MoneyDateInsights {
 }
 
 class ClaudeService {
-  static const _model = 'claude-haiku-4-5';
+  static const _model = 'claude-haiku-4-5-20251001';
   static const _apiUrl = 'https://api.anthropic.com/v1/messages';
   static const _apiKey = String.fromEnvironment('CLAUDE_API_KEY');
 
@@ -26,8 +26,12 @@ class ClaudeService {
     required Household household,
     required List<Partner> partners,
   }) async {
-    final partnerA = partners.firstWhere((p) => p.role == 'partner_a');
-    final partnerB = partners.firstWhere((p) => p.role == 'partner_b');
+    final partnerA = partners.where((p) => p.role == 'partner_a').firstOrNull;
+    final partnerB = partners.where((p) => p.role == 'partner_b').firstOrNull;
+
+    if (partnerA == null || partnerB == null) {
+      throw Exception('Waiting for your partner to join before Money Date is available.');
+    }
 
     // Build week summary
     final expenses = weekTransactions.where((t) => !t.isIncome && !t.isPrivate);
@@ -95,7 +99,8 @@ Rules:
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Claude API error: ${response.statusCode}');
+      throw Exception(
+          'Claude API error ${response.statusCode}: ${response.body}');
     }
 
     final data = jsonDecode(response.body);

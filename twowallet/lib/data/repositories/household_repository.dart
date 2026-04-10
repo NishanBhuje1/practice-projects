@@ -5,41 +5,54 @@ import '../models/partner.dart';
 class HouseholdRepository {
   final _client = Supabase.instance.client;
 
-  Future<Household?> fetchMyHousehold() async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
+  // Cached per logged-in user so every update method avoids a redundant
+  // partners→householdId round-trip. Invalidated when the user changes.
+  String? _cachedHouseholdId;
+  String? _cachedUserId;
 
-    final partners = await _client
+  /// Returns the householdId for the current user, using an in-memory cache.
+  /// Returns null when no user is logged in.
+  Future<String?> _getHouseholdId() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      _cachedHouseholdId = null;
+      _cachedUserId = null;
+      return null;
+    }
+    // Invalidate if a different user has signed in since last call.
+    if (_cachedUserId != userId) {
+      _cachedHouseholdId = null;
+      _cachedUserId = userId;
+    }
+    if (_cachedHouseholdId != null) return _cachedHouseholdId;
+
+    final row = await _client
         .from('partners')
         .select('household_id')
         .eq('user_id', userId)
-        .limit(1);
+        .limit(1)
+        .maybeSingle();
 
-    if (partners.isEmpty) return null;
-    final householdId = partners.first['household_id'] as String;
+    _cachedHouseholdId = row?['household_id'] as String?;
+    return _cachedHouseholdId;
+  }
 
-    final households = await _client
+  Future<Household?> fetchMyHousehold() async {
+    final householdId = await _getHouseholdId();
+    if (householdId == null) return null;
+
+    final row = await _client
         .from('households')
         .select()
         .eq('id', householdId)
-        .limit(1);
+        .maybeSingle();
 
-    if (households.isEmpty) return null;
-    return Household.fromJson(households.first);
+    return row != null ? Household.fromJson(row) : null;
   }
 
   Future<List<Partner>> fetchPartners() async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return [];
-
-    final myPartners = await _client
-        .from('partners')
-        .select('household_id')
-        .eq('user_id', userId)
-        .limit(1);
-
-    if (myPartners.isEmpty) return [];
-    final householdId = myPartners.first['household_id'] as String;
+    final householdId = await _getHouseholdId();
+    if (householdId == null) return [];
 
     final data = await _client
         .from('partners')
@@ -51,56 +64,27 @@ class HouseholdRepository {
   }
 
   Future<void> updateSplitRatio(double ratioA) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
-
-    final partners = await _client
-        .from('partners')
-        .select('household_id')
-        .eq('user_id', userId)
-        .limit(1);
-
-    if (partners.isEmpty) return;
-
-    await _client.from('households').update({'split_ratio_a': ratioA}).eq(
-        'id', partners.first['household_id'] as String);
+    final id = await _getHouseholdId();
+    if (id == null) return;
+    await _client.from('households').update({'split_ratio_a': ratioA}).eq('id', id);
   }
 
   Future<void> updateSplitMethod(String method) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
-
-    final partners = await _client
-        .from('partners')
-        .select('household_id')
-        .eq('user_id', userId)
-        .limit(1);
-
-    if (partners.isEmpty) return;
-
-    await _client.from('households').update({'split_method': method}).eq(
-        'id', partners.first['household_id'] as String);
+    final id = await _getHouseholdId();
+    if (id == null) return;
+    await _client.from('households').update({'split_method': method}).eq('id', id);
   }
 
   Future<void> updatePrivatePockets({
     required double pocketA,
     required double pocketB,
   }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
-
-    final partners = await _client
-        .from('partners')
-        .select('household_id')
-        .eq('user_id', userId)
-        .limit(1);
-
-    if (partners.isEmpty) return;
-
+    final id = await _getHouseholdId();
+    if (id == null) return;
     await _client.from('households').update({
       'private_pocket_a_aud': pocketA,
       'private_pocket_b_aud': pocketB,
-    }).eq('id', partners.first['household_id'] as String);
+    }).eq('id', id);
   }
 
   Future<void> pauseHousehold({
@@ -128,26 +112,17 @@ class HouseholdRepository {
         .eq('status', 'active');
   }
 
-Future<void> updateMoneyDateSchedule({
-  required int day,
-  required int hour,
-}) async {
-  final userId = _client.auth.currentUser?.id;
-  if (userId == null) return;
-
-  final partners = await _client
-      .from('partners')
-      .select('household_id')
-      .eq('user_id', userId)
-      .limit(1);
-
-  if (partners.isEmpty) return;
-
-  await _client.from('households').update({
-    'money_date_day': day,
-    'money_date_hour': hour,
-  }).eq('id', partners.first['household_id'] as String);
-}
+  Future<void> updateMoneyDateSchedule({
+    required int day,
+    required int hour,
+  }) async {
+    final id = await _getHouseholdId();
+    if (id == null) return;
+    await _client.from('households').update({
+      'money_date_day': day,
+      'money_date_hour': hour,
+    }).eq('id', id);
+  }
 
   Future<void> resumeHousehold({
     required String householdId,

@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/services/auth_service.dart';
-import '../../data/repositories/household_repository.dart';
 import '../../data/models/partner.dart';
+import 'repo_providers.dart';
 
 // Current auth user
 final authUserProvider = StreamProvider<User?>((ref) {
@@ -13,11 +13,13 @@ final authUserProvider = StreamProvider<User?>((ref) {
 // Auth service
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
-// Current partners in the household
+// Current partners in the household — uses the shared householdRepoProvider
+// so the same HouseholdRepository instance (and its householdId cache) is reused
+// across auth_provider and all feature providers.
 final partnersProvider = FutureProvider<List<Partner>>((ref) async {
   final user = ref.watch(authUserProvider).value;
   if (user == null) return [];
-  return HouseholdRepository().fetchPartners();
+  return ref.read(householdRepoProvider).fetchPartners();
 });
 
 // Which partner is the current user

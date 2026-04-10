@@ -1,10 +1,7 @@
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 class AnalyticsService {
-  static const _apiKey = String.fromEnvironment(
-    'POSTHOG_API_KEY',
-    defaultValue: 'your-posthog-key',
-  );
+  static const _apiKey = String.fromEnvironment('POSTHOG_API_KEY');
 
   static Future<void> init() async {
     final config = PostHogConfig(_apiKey)

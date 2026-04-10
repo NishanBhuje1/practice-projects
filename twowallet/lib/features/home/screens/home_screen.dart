@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -276,56 +277,61 @@ class _PausedBanner extends ConsumerWidget {
 class _BucketCards extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(bucketTotalsProvider);
+    final totalsAsync  = ref.watch(bucketTotalsProvider);
     final partnersAsync = ref.watch(partnersProvider);
-    final txAsync = ref.watch(recentTransactionsProvider);
+    final txAsync      = ref.watch(recentTransactionsProvider);
+    final allTxAsync   = ref.watch(allTransactionsThisMonthProvider);
 
     return totalsAsync.when(
       loading: () => const _BucketCardsShimmer(),
       error:   (_, __) => const SizedBox.shrink(),
       data: (totals) {
         final partners = partnersAsync.value ?? [];
-        final userId = ref.watch(authUserProvider).value?.id;
-        final me    = partners.where((p) => p.userId == userId).firstOrNull;
-        final other = partners.where((p) => p.userId != userId).firstOrNull;
+        final userId   = ref.watch(authUserProvider).value?.id;
+        final me       = partners.where((p) => p.userId == userId).firstOrNull;
+        final other    = partners.where((p) => p.userId != userId).firstOrNull;
         final transactions = txAsync.value ?? [];
+        final allTxs   = allTxAsync.value ?? [];
 
         final myLastTx = transactions
             .where((t) => t.bucket == 'mine' && t.partnerId == me?.id)
             .firstOrNull;
-        final ourLastTx = transactions
-            .where((t) => t.bucket == 'ours')
-            .firstOrNull;
-        final theirLastTx = transactions
-            .where((t) => t.bucket == 'theirs')
-            .firstOrNull;
+        final ourLastTx   = transactions.where((t) => t.bucket == 'ours').firstOrNull;
+        final theirLastTx = transactions.where((t) => t.bucket == 'theirs').firstOrNull;
+
+        // 7-day daily sparkline for Ours bucket
+        final oursSparkline = List<double>.generate(7, (i) {
+          final day = DateTime.now().subtract(Duration(days: 6 - i));
+          final dayStr =
+              '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+          return allTxs
+              .where((t) => t.bucket == 'ours' && !t.isIncome && t.date == dayStr)
+              .fold(0.0, (s, t) => s + t.amountAud.abs());
+        });
+
+        final combinedTotal = totals.mine + totals.ours + totals.theirs;
 
         return Column(
           children: [
-            _AnimatedBucketCard(
-              bucket: 'mine',
-              label: me?.displayName ?? 'Mine',
+            _MineBucketCard(
+              label: me?.displayName ?? 'My spending',
               amount: totals.mine,
+              total: combinedTotal > 0 ? combinedTotal : 1,
               lastTx: myLastTx,
               onAdd: () => context.push('/add-transaction'),
             ),
             const SizedBox(height: 12),
-            _AnimatedBucketCard(
-              bucket: 'ours',
-              label: 'Ours',
+            _OursBucketCard(
               amount: totals.ours,
               lastTx: ourLastTx,
-              partners: partners,
-              myPartnerId: me?.id,
+              sparkline: oursSparkline,
               onAdd: () => context.push('/add-transaction'),
             ),
             const SizedBox(height: 12),
-            _AnimatedBucketCard(
-              bucket: 'theirs',
-              label: other?.displayName ?? 'Theirs',
+            _PartnerBucketCard(
+              label: other?.displayName ?? "Partner's spending",
               amount: totals.theirs,
               lastTx: theirLastTx,
-              isViewOnly: true,
             ),
           ],
         );
@@ -334,315 +340,438 @@ class _BucketCards extends ConsumerWidget {
   }
 }
 
-// ── Individual animated bucket card ──────────────────────────────────────────
+// ── Flat card shared header ────────────────────────────────────────────────────
 
-class _AnimatedBucketCard extends StatefulWidget {
-  final String bucket;
+class _CardHeader extends StatelessWidget {
   final String label;
-  final double amount;
-  final Transaction? lastTx;
-  final List<Partner> partners;
-  final String? myPartnerId;
-  final bool isViewOnly;
+  final Color dotColor;
   final VoidCallback? onAdd;
+  final bool isViewOnly;
 
-  const _AnimatedBucketCard({
-    required this.bucket,
+  const _CardHeader({
     required this.label,
-    required this.amount,
-    this.lastTx,
-    this.partners = const [],
-    this.myPartnerId,
-    this.isViewOnly = false,
+    required this.dotColor,
     this.onAdd,
+    this.isViewOnly = false,
   });
 
   @override
-  State<_AnimatedBucketCard> createState() => _AnimatedBucketCardState();
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        if (isViewOnly)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.visibility_outlined, size: 12, color: dotColor),
+                const SizedBox(width: 2),
+                Text('View', style: GoogleFonts.inter(fontSize: 12, color: dotColor)),
+              ],
+            ),
+          )
+        else if (onAdd != null)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onAdd!();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 12, color: dotColor),
+                  const SizedBox(width: 2),
+                  Text('Add', style: GoogleFonts.inter(fontSize: 12, color: dotColor)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
-class _AnimatedBucketCardState extends State<_AnimatedBucketCard> {
-  bool _pressed = false;
+// ── Mine bucket card ───────────────────────────────────────────────────────────
+
+class _MineBucketCard extends StatelessWidget {
+  final String label;
+  final double amount;
+  final double total;
+  final Transaction? lastTx;
+  final VoidCallback onAdd;
+
+  const _MineBucketCard({
+    required this.label,
+    required this.amount,
+    required this.total,
+    this.lastTx,
+    required this.onAdd,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color     = AppColors.forBucket(widget.bucket);
-    final lightColor = AppColors.lightForBucket(widget.bucket);
-
     return GestureDetector(
-      onTapDown: (_) {
-        HapticFeedback.lightImpact();
-        setState(() => _pressed = true);
-      },
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        // Navigate to bucket detail / spending filtered
-        context.push('/spending');
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: _pressed ? 0.04 : 0.08),
-                blurRadius: _pressed ? 4 : 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Card header: label + action ──────────────────────────
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.label,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (!widget.isViewOnly && widget.onAdd != null)
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        widget.onAdd!();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: lightColor,
-                          borderRadius: BorderRadius.circular(20),
+      onTap: () => context.push('/spending'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F2FF),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CardHeader(label: label, dotColor: AppColors.mine, onAdd: onAdd),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: amount),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeOut,
+                        builder: (_, v, __) => Text(
+                          v.toAUD(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      ),
+                      Text(
+                        'spent this month',
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                      if (lastTx != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
                           children: [
-                            Icon(Icons.add, size: 13, color: color),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                  color: AppColors.mine, shape: BoxShape.circle),
+                            ),
                             const SizedBox(width: 4),
-                            Text(
-                              'Add',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: color,
+                            Expanded(
+                              child: Text(
+                                '${lastTx!.merchantName}  ·  ${lastTx!.amountAud.abs().toAUD()}',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12, color: Colors.grey.shade600),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: lightColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.visibility_outlined, size: 13, color: color),
-                          const SizedBox(width: 4),
-                          Text(
-                            'View',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Animated balance ──────────────────────────────────────
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: widget.amount),
-                duration: const Duration(milliseconds: 700),
-                curve: Curves.easeOut,
-                builder: (context, value, _) => Text(
-                  value.toAUD(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
+                      ],
+                    ],
                   ),
                 ),
-              ),
-              Text(
-                'spent this month',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-
-              // ── Ours: contribution bar ────────────────────────────────
-              if (widget.bucket == 'ours' && widget.partners.length >= 2) ...[
-                const SizedBox(height: 14),
-                _OursContributionBar(
-                  partners: widget.partners,
-                  myPartnerId: widget.myPartnerId,
-                ),
-              ]
-
-              // ── Mine / Theirs: last transaction preview ───────────────
-              else if (widget.lastTx != null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${widget.lastTx!.merchantName}  ·  ${widget.lastTx!.amountAud.abs().toAUD()}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: _MiniDonutChart(spent: amount, total: total),
                 ),
               ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Ours contribution bar ─────────────────────────────────────────────────────
+// ── Ours bucket card ───────────────────────────────────────────────────────────
 
-class _OursContributionBar extends ConsumerWidget {
-  final List<Partner> partners;
-  final String? myPartnerId;
+class _OursBucketCard extends StatelessWidget {
+  final double amount;
+  final Transaction? lastTx;
+  final List<double> sparkline;
+  final VoidCallback onAdd;
 
-  const _OursContributionBar({required this.partners, this.myPartnerId});
+  const _OursBucketCard({
+    required this.amount,
+    this.lastTx,
+    required this.sparkline,
+    required this.onAdd,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final txAsync = ref.watch(allTransactionsThisMonthProvider);
-    return txAsync.when(
-      loading: () => const SizedBox(height: 4),
-      error:   (_, __) => const SizedBox.shrink(),
-      data: (transactions) {
-        final oursTx = transactions.where((t) => t.bucket == 'ours' && !t.isIncome);
-
-        double myTotal = 0;
-        double theirTotal = 0;
-        for (final t in oursTx) {
-          if (t.partnerId == myPartnerId) {
-            myTotal += t.amountAud.abs();
-          } else {
-            theirTotal += t.amountAud.abs();
-          }
-        }
-
-        final total = myTotal + theirTotal;
-        final myFraction = total > 0 ? myTotal / total : 0.5;
-
-        final me    = partners.where((p) => p.id == myPartnerId).firstOrNull;
-        final other = partners.where((p) => p.id != myPartnerId).firstOrNull;
-
-        return Column(
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/spending'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F7F2),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _CardHeader(label: 'Our spending', dotColor: AppColors.ours, onAdd: onAdd),
+            const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  me?.displayName ?? 'You',
-                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-                ),
-                Text(
-                  other?.displayName ?? 'Partner',
-                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: SizedBox(
-                height: 5,
-                child: LayoutBuilder(builder: (context, constraints) {
-                  return Row(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 600),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: amount),
+                        duration: const Duration(milliseconds: 700),
                         curve: Curves.easeOut,
-                        width: constraints.maxWidth * myFraction,
-                        height: 5,
-                        color: AppColors.ours,
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 5,
-                          color: AppColors.theirsLight,
+                        builder: (_, v, __) => Text(
+                          v.toAUD(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
+                      Text(
+                        'spent this month',
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                      if (lastTx != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                  color: AppColors.ours, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${lastTx!.merchantName}  ·  ${lastTx!.amountAud.abs().toAUD()}',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12, color: Colors.grey.shade600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
-                  );
-                }),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${(myFraction * 100).round()}%',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ours,
                   ),
                 ),
-                Text(
-                  '${((1 - myFraction) * 100).round()}%',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.theirs,
-                  ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: _MiniLineChart(data: sparkline),
                 ),
               ],
             ),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+// ── Partner bucket card ────────────────────────────────────────────────────────
+
+class _PartnerBucketCard extends StatelessWidget {
+  final String label;
+  final double amount;
+  final Transaction? lastTx;
+
+  const _PartnerBucketCard({
+    required this.label,
+    required this.amount,
+    this.lastTx,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/spending'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF4E8),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CardHeader(label: label, dotColor: AppColors.theirs, isViewOnly: true),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: amount),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOut,
+                  builder: (_, v, __) => Text(
+                    v.toAUD(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Text(
+                  'spent this month',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500),
+                ),
+                if (lastTx != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                            color: AppColors.theirs, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${lastTx!.merchantName}  ·  ${lastTx!.amountAud.abs().toAUD()}',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: Colors.grey.shade600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mini donut chart ───────────────────────────────────────────────────────────
+
+class _MiniDonutChart extends StatelessWidget {
+  final double spent;
+  final double total;
+
+  const _MiniDonutChart({required this.spent, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (spent / total).clamp(0.001, 1.0);
+    return PieChart(
+      PieChartData(
+        sectionsSpace: 0,
+        centerSpaceRadius: 18,
+        sections: [
+          PieChartSectionData(
+            value: pct * 100,
+            color: AppColors.mine,
+            radius: 8,
+            showTitle: false,
+          ),
+          PieChartSectionData(
+            value: (1 - pct) * 100,
+            color: const Color(0xFFD4E5FA),
+            radius: 8,
+            showTitle: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Mini line chart ────────────────────────────────────────────────────────────
+
+class _MiniLineChart extends StatelessWidget {
+  final List<double> data;
+
+  const _MiniLineChart({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasData = data.any((v) => v > 0);
+    if (!hasData) {
+      return Center(
+        child: Container(
+          width: 60,
+          height: 2,
+          color: AppColors.ours.withValues(alpha: 0.3),
+        ),
+      );
+    }
+    final spots = data
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.3,
+            color: AppColors.ours,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: AppColors.ours.withValues(alpha: 0.1),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -658,59 +787,48 @@ class _QuickActionsRow extends StatelessWidget {
         Text(
           'Quick actions',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              _QuickAction(
-                icon: Icons.add_circle_outline_rounded,
-                label: 'Add expense',
-                color: AppColors.ours,
-                onTap: () => context.push('/add-transaction'),
-              ),
-              const SizedBox(width: 10),
-              _QuickAction(
-                icon: Icons.favorite_outline_rounded,
-                label: 'Money Date',
-                color: AppColors.mine,
-                onTap: () => context.push('/money-date'),
-              ),
-              const SizedBox(width: 10),
-              _QuickAction(
-                icon: Icons.balance_outlined,
-                label: 'Fair Split',
-                color: AppColors.theirs,
-                onTap: () => context.go('/fair-split'),
-              ),
-              const SizedBox(width: 10),
-              _QuickAction(
-                icon: Icons.flag_outlined,
-                label: 'Goals',
-                color: AppColors.ours,
-                onTap: () => context.go('/goals'),
-              ),
-            ],
-          ),
+        Row(
+          children: [
+            _QuickActionCard(
+              icon: Icons.add_circle_outline_rounded,
+              label: 'Add expense',
+              color: AppColors.ours,
+              onTap: () => context.push('/add-transaction'),
+            ),
+            const SizedBox(width: 12),
+            _QuickActionCard(
+              icon: Icons.favorite_outline_rounded,
+              label: 'Money Date',
+              color: AppColors.mine,
+              onTap: () => context.push('/money-date'),
+            ),
+            const SizedBox(width: 12),
+            _QuickActionCard(
+              icon: Icons.balance_outlined,
+              label: 'Fair split',
+              color: AppColors.theirs,
+              onTap: () => context.go('/fair-split'),
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
-class _QuickAction extends StatefulWidget {
+class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickAction({
+  const _QuickActionCard({
     required this.icon,
     required this.label,
     required this.color,
@@ -718,61 +836,43 @@ class _QuickAction extends StatefulWidget {
   });
 
   @override
-  State<_QuickAction> createState() => _QuickActionState();
-}
-
-class _QuickActionState extends State<_QuickAction> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) {
-        HapticFeedback.lightImpact();
-        setState(() => _pressed = true);
-      },
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.94 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeInOut,
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: widget.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(widget.icon, size: 16, color: widget.color),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 8),
               Text(
-                widget.label,
+                label,
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
+                  color: Colors.black87,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

@@ -14,7 +14,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _incomeController = TextEditingController();
   bool _loading = false;
   String? _error;
 
@@ -23,7 +22,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _incomeController.dispose();
     super.dispose();
   }
 
@@ -35,7 +33,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         displayName: _nameController.text.trim(),
-        monthlyIncomeNetAud: double.tryParse(_incomeController.text),
+        monthlyIncomeNetAud: null,
       );
 
       if (mounted) {
@@ -51,7 +49,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your details')),
+      appBar: AppBar(
+        title: const Text('Your details'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          onPressed: () => context.go('/onboarding'),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -79,16 +83,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _incomeController,
-              decoration: const InputDecoration(
-                labelText: 'Monthly take-home pay (optional)',
-                prefixText: '\$ ',
-                helperText: 'Used for income-ratio splitting. Private by default.',
-              ),
-              keyboardType: TextInputType.number,
-            ),
             const SizedBox(height: 32),
             if (_error != null) ...[
               Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -101,6 +95,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 child: _loading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Continue'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: () => context.go('/signin'),
+                child: const Text('Already have an account? Sign in'),
               ),
             ),
           ],

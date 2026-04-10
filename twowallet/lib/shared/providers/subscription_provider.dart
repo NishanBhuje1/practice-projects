@@ -3,7 +3,7 @@ import '../../data/services/revenue_cat_service.dart';
 
 // Provider that returns current tier: 'free', 'together', 'together_plus'
 final subscriptionTierProvider = FutureProvider<String>((ref) async {
-  return RevenueCatService().getCurrentTier();
+  return RevenueCatService.getCurrentTier();
 });
 
 // Convenience bool providers

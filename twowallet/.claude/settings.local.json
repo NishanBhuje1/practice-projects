@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(flutter build:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(python3:*)",
+      "Bash(flutter pub:*)"
     ]
   }
 }

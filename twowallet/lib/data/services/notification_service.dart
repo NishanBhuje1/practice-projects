@@ -25,19 +25,6 @@ class NotificationService {
     _initialized = true;
   }
 
-  static Future<void> requestPermission() async {
-    await _plugin.initialize(
-      const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        ),
-      ),
-    );
-  }
-
   static Future<void> scheduleMoneyDate({
     required int dayOfWeek,
     required int hour,
@@ -46,7 +33,8 @@ class NotificationService {
 
     final now = tz.TZDateTime.now(tz.local);
 
-    int daysUntil = (dayOfWeek - now.weekday % 7 + 7) % 7;
+    // Dart weekday: 1=Monday … 7=Sunday. Subtract directly before modulo.
+    int daysUntil = (dayOfWeek - now.weekday + 7) % 7;
     if (daysUntil == 0 && now.hour >= hour) daysUntil = 7;
 
     final scheduled = tz.TZDateTime(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/analytics_service.dart';
 
@@ -62,10 +63,12 @@ class InviteScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 icon: const Icon(Icons.share),
                 label: const Text('Share invite link'),
-                onPressed: () {
+                onPressed: () async {
                   AnalyticsService.partnerInvited();
-                  // Share via system share sheet
-                  // Add share_plus package when ready
+                  await Share.share(
+                    'Join my TwoWallet household! Tap the link to get started: $inviteLink',
+                    subject: 'Join me on TwoWallet',
+                  );
                 },
               ),
             ),

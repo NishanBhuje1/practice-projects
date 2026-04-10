@@ -42,16 +42,18 @@ class _BucketFilter extends ConsumerWidget {
 
     final tabs = [
       (null, 'All'),
-      ('mine', 'Mine'),
-      ('ours', 'Ours'),
-      ('theirs', 'Theirs'),
+      ('mine', 'My spending'),
+      ('ours', 'Our spending'),
+      ('theirs', "Partner's spending"),
     ];
 
     return Container(
       color: Colors.grey.shade50,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: tabs.map((tab) {
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: tabs.map((tab) {
           final (value, label) = tab;
           final isSelected = selected == value;
           final color =
@@ -81,6 +83,7 @@ class _BucketFilter extends ConsumerWidget {
             ),
           );
         }).toList(),
+        ),
       ),
     );
   }
@@ -296,9 +299,9 @@ class _TxRow extends StatelessWidget {
     final bucketColor = AppColors.forBucket(tx.bucket);
     final bucketLight = AppColors.lightForBucket(tx.bucket);
     final bucketLabel = switch (tx.bucket) {
-      'mine' => 'M',
-      'ours' => 'O',
-      'theirs' => 'T',
+      'mine' => 'Me',
+      'ours' => 'Us',
+      'theirs' => 'P',
       _ => '?',
     };
 

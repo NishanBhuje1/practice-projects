@@ -19,10 +19,18 @@ class DeepLinkService {
   }
 
   void _handleLink(Uri uri, GoRouter router) {
-    // twowallet://invite/HOUSEHOLD_ID
+    // Custom scheme: twowallet://invite/HOUSEHOLD_ID
     if (uri.scheme == 'twowallet' && uri.host == 'invite') {
       final householdId = uri.pathSegments.first;
       router.push('/onboarding/join?code=$householdId');
+      return;
+    }
+    // Universal link: https://twowallet.app/join?code=HOUSEHOLD_ID
+    if (uri.host == 'twowallet.app' && uri.path == '/join') {
+      final code = uri.queryParameters['code'];
+      if (code != null && code.isNotEmpty) {
+        router.push('/onboarding/join?code=$code');
+      }
     }
   }
 }

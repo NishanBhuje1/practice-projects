@@ -7,7 +7,7 @@ import '../../../data/services/revenue_cat_service.dart';
 import '../../../data/services/analytics_service.dart';
 
 final packagesProvider = FutureProvider<List<Package>>((ref) {
-  return RevenueCatService().getPackages();
+  return RevenueCatService.getPackages();
 });
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -31,7 +31,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Future<void> _purchase(Package package) async {
     setState(() { _loading = true; _error = null; });
     try {
-      final info = await RevenueCatService().purchase(package);
+      final info = await RevenueCatService.purchase(package);
       if (info.entitlements.active.isNotEmpty) {
         await AnalyticsService.subscriptionPurchased(_selectedTier);
         if (mounted) context.go('/home');
@@ -46,7 +46,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Future<void> _restore() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final info = await RevenueCatService().restorePurchases();
+      final info = await RevenueCatService.restorePurchases();
       if (info.entitlements.active.isNotEmpty) {
         await AnalyticsService.subscriptionRestored();
         if (mounted) {

@@ -1,23 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/repositories/transaction_repository.dart';
-import '../../../data/repositories/settlement_repository.dart';
-import '../../../data/repositories/household_repository.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/models/settlement.dart';
 import '../../../data/models/household.dart';
-import '../../../data/models/partner.dart';
 import '../../../core/utils/fair_split_calc.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/providers/repo_providers.dart';
+import '../../home/providers/home_provider.dart';
 
-
-// Repositories
-final transactionRepoProvider = Provider((_) => TransactionRepository());
-final settlementRepoProvider = Provider((_) => SettlementRepository());
-final householdRepoProvider = Provider((_) => HouseholdRepository());
+export '../../../shared/providers/repo_providers.dart'
+    show transactionRepoProvider, settlementRepoProvider, householdRepoProvider;
 
 // Raw data providers
-final oursTransactionsProvider = FutureProvider<List<Transaction>>((ref) {
-  return ref.read(transactionRepoProvider).fetchOursThisMonth();
+// Filters 'ours' from the shared monthly cache instead of making its own query.
+// When home screen has already loaded, this is free (zero network calls).
+final oursTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
+  final all = await ref.watch(allTransactionsThisMonthProvider.future);
+  return all.where((t) => t.bucket == Bucket.ours.value).toList();
 });
 
 final settlementHistoryProvider = FutureProvider<List<Settlement>>((ref) {
@@ -36,8 +35,10 @@ final fairSplitResultProvider = FutureProvider<FairSplitResult?>((ref) async {
 
   if (household == null || partners.length < 2) return null;
 
-  final partnerA = partners.firstWhere((p) => p.role == 'partner_a');
-  final partnerB = partners.firstWhere((p) => p.role == 'partner_b');
+  final partnerA = partners.where((p) => p.role == PartnerRole.partnerA.value).firstOrNull;
+  final partnerB = partners.where((p) => p.role == PartnerRole.partnerB.value).firstOrNull;
+
+  if (partnerA == null || partnerB == null) return null;
 
   return FairSplitCalc.calculate(
     oursTransactions: transactions,

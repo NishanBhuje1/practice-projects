@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/providers/auth_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../onboarding_controller.dart';
 
 class JoinScreen extends ConsumerStatefulWidget {
-  final String? householdId; // pre-filled if opened via deep link
+  final String? householdId;
   const JoinScreen({super.key, this.householdId});
 
   @override
@@ -12,99 +15,153 @@ class JoinScreen extends ConsumerStatefulWidget {
 }
 
 class _JoinScreenState extends ConsumerState<JoinScreen> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _incomeController = TextEditingController();
-  late final _codeController = TextEditingController(
-    text: widget.householdId ?? '',
-  );
   bool _loading = false;
-  String? _error;
 
-  Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+  Future<void> _joinHousehold() async {
+    if (widget.householdId == null) return;
+    setState(() => _loading = true);
 
     try {
-      await ref.read(authServiceProvider).signUpPartnerB(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        displayName: _nameController.text.trim(),
-        householdId: _codeController.text.trim(),
-        monthlyIncomeNetAud: double.tryParse(_incomeController.text),
-      );
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
 
+      if (userId == null) {
+        // Not logged in — save household ID and redirect to signup
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pending_household_id', widget.householdId!);
+        if (mounted) context.push('/onboarding/signup');
+        return;
+      }
+
+      // Check if already in a household
+      final existing = await client
+          .from('partners')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        if (mounted) context.go('/home');
+        return;
+      }
+
+      // Verify household exists
+      await client
+          .from('households')
+          .select('id')
+          .eq('id', widget.householdId!)
+          .single();
+
+      // Derive display name from auth metadata
+      final user = client.auth.currentUser!;
+      final displayName =
+          user.userMetadata?['full_name'] as String? ??
+          user.userMetadata?['display_name'] as String? ??
+          user.email?.split('@')[0] ??
+          'Partner';
+
+      // Join as partner_b
+      await client.from('partners').insert({
+        'household_id': widget.householdId,
+        'user_id': userId,
+        'display_name': displayName,
+        'role': 'partner_b',
+      });
+
+      await OnboardingController.markOnboardingComplete();
+      await OnboardingController.markSetupComplete();
       if (mounted) context.go('/home');
     } catch (e) {
-      setState(() { _error = e.toString(); });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error joining household: $e')),
+        );
+      }
     } finally {
-      setState(() { _loading = false; });
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Join your partner')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Join your household',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Your first name'),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _incomeController,
-              decoration: const InputDecoration(
-                labelText: 'Monthly take-home pay (optional)',
-                prefixText: '\$ ',
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              Container(
+                width: 88,
+                height: 88,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE1F5EE),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.favorite,
+                  size: 40,
+                  color: Color(0xFF1D9E75),
+                ),
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Invite code',
-                helperText: 'Paste the code from your partner\'s invite link',
+              const SizedBox(height: 24),
+              Text(
+                'You\'ve been invited!',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-            if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              Text(
+                'Your partner is waiting for you on TwoWallet. Join their household to start managing money together.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: Colors.grey.shade500,
+                  height: 1.5,
+                ),
+              ),
+              const Spacer(flex: 3),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: _loading ? null : _joinHousehold,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1D9E75),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Join household',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context.go('/onboarding'),
+                child: Text(
+                  'Create my own account instead',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Join household'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../providers/money_date_provider.dart';
 import '../../../data/services/claude_service.dart';
 import '../../../data/services/analytics_service.dart';
+import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
+
+String _isoWeekKey(DateTime date) {
+  final thursday = date.subtract(Duration(days: date.weekday - 4));
+  final weekNumber =
+      ((thursday.difference(DateTime(thursday.year)).inDays) / 7).ceil();
+  return '${thursday.year}-W${weekNumber.toString().padLeft(2, '0')}';
+}
 
 class MoneyDateScreen extends ConsumerStatefulWidget {
   const MoneyDateScreen({super.key});
@@ -24,7 +35,8 @@ class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final insightsAsync = ref.watch(moneyDateInsightsProvider);
+    final weekKey = _isoWeekKey(DateTime.now());
+    final insightsAsync = ref.watch(moneyDateInsightsProvider(weekKey));
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -45,30 +57,9 @@ class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
             ],
           ),
         ),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline,
-                    size: 48, color: Colors.grey.shade300),
-                const SizedBox(height: 16),
-                Text('Could not generate insights',
-                    style: TextStyle(color: Colors.grey.shade600)),
-                const SizedBox(height: 8),
-                Text('$e',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                OutlinedButton(
-                  onPressed: () => ref.invalidate(moneyDateInsightsProvider),
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        error: (e, _) => e is HouseholdNotReadyException
+            ? _WaitingForPartner()
+            : _InsightsError(onRetry: () => ref.invalidate(moneyDateInsightsProvider(weekKey))),
         data: (insights) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -78,6 +69,145 @@ class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
             const SizedBox(height: 16),
             _DecisionPrompt(insights: insights),
             const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error states ─────────────────────────────────────────────────────────────
+
+/// Shown when the household has fewer than 2 partners.
+class _WaitingForPartner extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final partnersAsync = ref.watch(partnersProvider);
+    final householdId = partnersAsync.value?.firstOrNull?.householdId ?? '';
+    final inviteLink = 'https://twowallet.app/join?code=$householdId';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE1F5EE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person_add_outlined,
+                  size: 40, color: Color(0xFF1D9E75)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Waiting for your partner',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your partner hasn\'t joined yet. Send them an invite to unlock your weekly Money Date and AI-powered insights.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: inviteLink));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invite link copied!'),
+                      backgroundColor: Color(0xFF1D9E75),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('Copy invite link'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1D9E75),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => Share.share(
+                'Join my TwoWallet household! $inviteLink',
+                subject: 'Join me on TwoWallet',
+              ),
+              icon: const Icon(Icons.share_outlined, size: 18),
+              label: const Text('Share invite'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                side: const BorderSide(color: Color(0xFF1D9E75)),
+                foregroundColor: const Color(0xFF1D9E75),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown for genuine errors (network failure, Claude API error, etc.).
+class _InsightsError extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _InsightsError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Couldn\'t load your insights',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check your connection and try again.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: onRetry,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1D9E75),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Try again'),
+            ),
           ],
         ),
       ),

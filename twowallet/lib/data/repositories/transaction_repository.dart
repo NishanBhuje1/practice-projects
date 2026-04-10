@@ -1,39 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/transaction.dart';
+import '../../core/extensions/date_ext.dart';
 
 class TransactionRepository {
   final _client = Supabase.instance.client;
-
-  Future<List<Transaction>> fetchThisMonth() async {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(now.year, now.month + 1, 1);
-
-    final data = await _client
-        .from('transactions')
-        .select()
-        .gte('date', '${start.year}-${start.month.toString().padLeft(2, '0')}-01')
-        .lt('date', '${end.year}-${end.month.toString().padLeft(2, '0')}-01')
-        .order('date', ascending: false);
-
-    return data.map((e) => Transaction.fromJson(e)).toList();
-  }
-
-  Future<List<Transaction>> fetchOursThisMonth() async {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(now.year, now.month + 1, 1);
-
-    final data = await _client
-        .from('transactions')
-        .select()
-        .eq('bucket', 'ours')
-        .gte('date', '${start.year}-${start.month.toString().padLeft(2, '0')}-01')
-        .lt('date', '${end.year}-${end.month.toString().padLeft(2, '0')}-01')
-        .order('date', ascending: false);
-
-    return data.map((e) => Transaction.fromJson(e)).toList();
-  }
 
   Future<List<Transaction>> fetchRecent({int limit = 5}) async {
     final data = await _client
@@ -49,29 +19,40 @@ class TransactionRepository {
   Future<List<Transaction>> fetchThisMonthAll() async {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(now.year, now.month + 1, 1);
+    final end   = DateTime(now.year, now.month + 1, 1);
 
     final data = await _client
         .from('transactions')
         .select()
-        .gte('date', '${start.year}-${start.month.toString().padLeft(2, '0')}-01')
-        .lt('date', '${end.year}-${end.month.toString().padLeft(2, '0')}-01')
+        .gte('date', start.toSupabaseDate())
+        .lt('date', end.toSupabaseDate())
         .order('date', ascending: false);
 
     return data.map((e) => Transaction.fromJson(e)).toList();
   }
 
   Future<List<Transaction>> fetchForMonth(int year, int month) async {
-    final start = '$year-${month.toString().padLeft(2, '0')}-01';
-    final endMonth = month == 12 ? 1 : month + 1;
-    final endYear = month == 12 ? year + 1 : year;
-    final end = '$endYear-${endMonth.toString().padLeft(2, '0')}-01';
+    final start    = DateTime(year, month, 1);
+    final end      = DateTime(year, month + 1, 1); // DateTime handles month overflow
 
     final data = await _client
         .from('transactions')
         .select()
-        .gte('date', start)
-        .lt('date', end)
+        .gte('date', start.toSupabaseDate())
+        .lt('date', end.toSupabaseDate())
+        .order('date', ascending: false);
+
+    return data.map((e) => Transaction.fromJson(e)).toList();
+  }
+
+  /// Single query covering [start, end). Used by analytics to replace
+  /// 6 sequential monthly queries with one round-trip.
+  Future<List<Transaction>> fetchDateRange(DateTime start, DateTime end) async {
+    final data = await _client
+        .from('transactions')
+        .select()
+        .gte('date', start.toSupabaseDate())
+        .lt('date', end.toSupabaseDate())
         .order('date', ascending: false);
 
     return data.map((e) => Transaction.fromJson(e)).toList();

@@ -32,12 +32,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isLoggedIn = authState.value != null;
       final hasSeenOnboarding = await OnboardingController.hasSeenOnboarding();
+      final isJoinScreen =
+          state.matchedLocation.startsWith('/onboarding/join');
       final isAuthScreen = state.matchedLocation == '/onboarding' ||
           state.matchedLocation == '/onboarding/signup' ||
-          state.matchedLocation == '/signin';
+          state.matchedLocation == '/signin' ||
+          isJoinScreen;
 
       if (!isLoggedIn) {
-        if (!hasSeenOnboarding && state.matchedLocation != '/onboarding') {
+        // Never redirect the join screen away — it handles auth itself
+        if (!hasSeenOnboarding &&
+            state.matchedLocation != '/onboarding' &&
+            !isJoinScreen) {
           return '/onboarding';
         }
         if (!isAuthScreen) return '/signin';
@@ -108,98 +114,101 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+// Computed once at app startup, not on every navigation rebuild.
+// GoogleFonts calls are O(1) after the first call but still allocate objects —
+// hoisting them here ensures a single allocation for the lifetime of the app.
+final _appTheme = ThemeData(
+  useMaterial3: true,
+  colorSchemeSeed: const Color(0xFF1D9E75),
+  scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+  textTheme: GoogleFonts.interTextTheme(),
+  appBarTheme: AppBarTheme(
+    backgroundColor: const Color(0xFFF8F9FA),
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    centerTitle: false,
+    titleTextStyle: GoogleFonts.plusJakartaSans(
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      color: Colors.black87,
+    ),
+    iconTheme: const IconThemeData(color: Colors.black87),
+  ),
+  cardTheme: CardThemeData(
+    elevation: 0,
+    color: Colors.white,
+    surfaceTintColor: Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    margin: EdgeInsets.zero,
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      minimumSize: const Size(double.infinity, 52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      textStyle: GoogleFonts.inter(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size(double.infinity, 52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFF1D9E75), width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    labelStyle: GoogleFonts.inter(color: Colors.grey.shade600),
+  ),
+  bottomNavigationBarTheme: BottomNavigationBarThemeData(
+    backgroundColor: Colors.white,
+    selectedItemColor: const Color(0xFF1D9E75),
+    unselectedItemColor: Colors.grey.shade400,
+    elevation: 0,
+    type: BottomNavigationBarType.fixed,
+  ),
+  dividerTheme: DividerThemeData(
+    color: Colors.grey.shade100,
+    thickness: 1,
+  ),
+);
+
 class TwoWalletApp extends ConsumerWidget {
   const TwoWalletApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    ref.read(deepLinkServiceProvider).init(router);
-
-    final baseTextTheme = GoogleFonts.interTextTheme();
-    final headingStyle = GoogleFonts.plusJakartaSans();
+    final deepLinkService = ref.read(deepLinkServiceProvider);
+    deepLinkService.init(router);
+    deepLinkService.checkInitialLink(router);
 
     return MaterialApp.router(
       title: 'TwoWallet',
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF1D9E75),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        textTheme: baseTextTheme,
-        appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFFF8F9FA),
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          centerTitle: false,
-          titleTextStyle: headingStyle.copyWith(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-          iconTheme: const IconThemeData(color: Colors.black87),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          margin: EdgeInsets.zero,
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF1D9E75), width: 1.5),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          labelStyle: GoogleFonts.inter(color: Colors.grey.shade600),
-        ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF1D9E75),
-          unselectedItemColor: Colors.grey.shade400,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-        ),
-        dividerTheme: DividerThemeData(
-          color: Colors.grey.shade100,
-          thickness: 1,
-        ),
-      ),
+      theme: _appTheme,
     );
   }
 }
