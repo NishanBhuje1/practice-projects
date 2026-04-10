@@ -25,10 +25,6 @@ dependencies:
   purchases_flutter: ^8.11.0
   purchases_ui_flutter: ^8.11.0
 
-  # Push notifications
-  firebase_core: ^2.30.1
-  firebase_messaging: ^14.9.1
-
   # UI
   intl: ^0.19.0
   flutter_svg: ^2.0.10
