@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/transaction.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
@@ -17,9 +16,7 @@ import '../../../data/services/analytics_service.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // AddTransactionScreen
-// Purpose: Full-screen sheet for logging a new transaction. Amount entry uses
-//          a custom numpad (never the system keyboard). Merchant and notes use
-//          the system keyboard — the numpad slides away automatically.
+// Purpose: Full-screen sheet for logging a new transaction.
 // ════════════════════════════════════════════════════════════════════════════
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -30,14 +27,13 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
       _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
-    with SingleTickerProviderStateMixin {
+class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   // ── Form state ────────────────────────────────────────────────────────────
+  final _amountController   = TextEditingController();
   final _merchantController = TextEditingController();
   final _notesController    = TextEditingController();
   final _merchantFocus      = FocusNode();
 
-  String _amountString = '0';
   String _bucket       = 'ours';
   String _category     = 'Groceries';
   bool   _isIncome     = false;
@@ -45,9 +41,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
   bool   _loading      = false;
   bool   _showSuccess  = false;
   String? _error;
-
-  // ── Keyboard visibility via FocusNode ─────────────────────────────────────
-  bool _merchantFocused = false;
 
   static const _expenseCategories = [
     'Groceries', 'Dining Out', 'Rent', 'Utilities', 'Transport',
@@ -60,7 +53,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
     'Investment Return', 'Gift', 'Refund', 'Other Income',
   ];
 
-  double get _amount => double.tryParse(_amountString) ?? 0.0;
+  double get _amount => double.tryParse(_amountController.text) ?? 0.0;
   bool get _canSubmit => _amount > 0 && !_loading;
 
   // ── Icons per category ────────────────────────────────────────────────────
@@ -91,45 +84,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
   @override
   void initState() {
     super.initState();
-    _merchantFocus.addListener(() {
-      setState(() => _merchantFocused = _merchantFocus.hasFocus);
-    });
+    _amountController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _amountController.dispose();
     _merchantController.dispose();
     _notesController.dispose();
     _merchantFocus.dispose();
     super.dispose();
-  }
-
-  // ── Numpad input ──────────────────────────────────────────────────────────
-
-  void _onNumpadKey(String key) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _error = null;
-      if (key == '⌫') {
-        if (_amountString.length > 1) {
-          _amountString = _amountString.substring(0, _amountString.length - 1);
-        } else {
-          _amountString = '0';
-        }
-      } else if (key == '.') {
-        if (!_amountString.contains('.')) _amountString += '.';
-      } else {
-        // digit
-        if (_amountString == '0') {
-          _amountString = key;
-        } else if (_amountString.contains('.')) {
-          final parts = _amountString.split('.');
-          if (parts[1].length < 2) _amountString += key;
-        } else {
-          if (_amountString.length < 7) _amountString += key;
-        }
-      }
-    });
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -290,14 +254,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                     ] else
                       const SizedBox(height: 8),
 
-                    // Amount display
-                    _AmountDisplay(
-                      amountString: _amountString,
-                      isIncome: _isIncome,
-                      color: bucketColor,
-                    ),
+                    // Amount field
+                    _AmountField(controller: _amountController),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
                     // Merchant field
                     _MerchantField(
@@ -350,37 +310,17 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                       _ErrorBanner(error: _error!),
                     ],
 
-                    // Spacer for when keyboard is up
-                    SizedBox(
-                      height: _merchantFocused
-                          ? MediaQuery.of(context).viewInsets.bottom + 16
-                          : 0,
-                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
-
-            // ── Numpad (hidden when merchant keyboard is up) ──────────
-            AnimatedCrossFade(
-              firstChild: _NumPad(onKey: _onNumpadKey),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: _merchantFocused
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
-              firstCurve: Curves.easeOut,
-              secondCurve: Curves.easeIn,
-              sizeCurve: Curves.easeInOut,
             ),
 
             // ── Confirm button ────────────────────────────────────────
             Padding(
               padding: EdgeInsets.fromLTRB(
                 20, 8, 20,
-                (_merchantFocused
-                    ? MediaQuery.of(context).viewInsets.bottom + 8
-                    : MediaQuery.of(context).padding.bottom + 12),
+                MediaQuery.of(context).padding.bottom + 12,
               ),
               child: _ConfirmButton(
                 canSubmit: _canSubmit,
@@ -582,71 +522,47 @@ class _BucketSelector extends StatelessWidget {
   }
 }
 
-// ── Amount display ────────────────────────────────────────────────────────────
+// ── Amount field ──────────────────────────────────────────────────────────────
 
-class _AmountDisplay extends StatelessWidget {
-  final String amountString;
-  final bool isIncome;
-  final Color color;
-
-  const _AmountDisplay({
-    required this.amountString,
-    required this.isIncome,
-    required this.color,
-  });
+class _AmountField extends StatelessWidget {
+  final TextEditingController controller;
+  const _AmountField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    final amount     = double.tryParse(amountString) ?? 0;
-    final hasAmount  = amount > 0;
-    final sign       = isIncome ? '+' : '-';
-    final signColor  = isIncome ? AppColors.success : AppColors.destructive;
-
-    // Format display: show raw string while entering, formatted when done
-    final displayText = amountString.contains('.')
-        ? amountString
-        : (hasAmount
-            ? NumberFormat.currency(
-                symbol: '',
-                decimalDigits: 0,
-              ).format(amount)
-            : '0');
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          '\$ ',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
-            fontWeight: FontWeight.w400,
-            color: hasAmount ? AppColors.textSecondary : AppColors.textTertiary,
-          ),
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.next,
+      style: GoogleFonts.inter(fontSize: 16, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        labelText: 'Amount',
+        labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+        prefixText: '\$ ',
+        prefixStyle: GoogleFonts.inter(fontSize: 16, color: AppColors.textPrimary),
+        hintText: '0.00',
+        hintStyle: GoogleFonts.inter(fontSize: 16, color: AppColors.textTertiary),
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
         ),
-        Text(
-          displayText,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 52,
-            fontWeight: FontWeight.w700,
-            color: hasAmount ? AppColors.textPrimary : AppColors.textTertiary,
-            letterSpacing: -2,
-          ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.separatorOpaque),
         ),
-        if (hasAmount)
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              sign,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: signColor,
-              ),
-            ),
-          ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.mine, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      validator: (v) {
+        if (v == null || v.isEmpty) return 'Enter an amount';
+        if (double.tryParse(v) == null) return 'Enter a valid amount';
+        return null;
+      },
     );
   }
 }
@@ -851,102 +767,6 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
-// ── Custom numpad ─────────────────────────────────────────────────────────────
-
-class _NumPad extends StatelessWidget {
-  final ValueChanged<String> onKey;
-  const _NumPad({required this.onKey});
-
-  static const _keys = [
-    ['7', '8', '9'],
-    ['4', '5', '6'],
-    ['1', '2', '3'],
-    ['.', '0', '⌫'],
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: _keys.map((row) => SizedBox(
-          height: 60,
-          child: Row(
-            children: row.map((key) => Expanded(
-              child: _NumPadKey(
-                label: key,
-                onTap: () => onKey(key),
-              ),
-            )).toList(),
-          ),
-        )).toList(),
-      ),
-    );
-  }
-}
-
-class _NumPadKey extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _NumPadKey({required this.label, required this.onTap});
-
-  @override
-  State<_NumPadKey> createState() => _NumPadKeyState();
-}
-
-class _NumPadKeyState extends State<_NumPadKey> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isBackspace = widget.label == '⌫';
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 80),
-        margin: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: _pressed
-              ? AppColors.separator
-              : isBackspace
-                  ? AppColors.separatorOpaque
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: _pressed
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-        ),
-        child: Center(
-          child: isBackspace
-              ? const Icon(Icons.backspace_outlined,
-                  size: 20, color: AppColors.textSecondary)
-              : Text(
-                  widget.label,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
 // ── Confirm button ────────────────────────────────────────────────────────────
 
 class _ConfirmButton extends StatelessWidget {
@@ -1016,30 +836,3 @@ class _ConfirmButton extends StatelessWidget {
   }
 }
 
-// ── Needed for amount display formatting ─────────────────────────────────────
-
-class NumberFormat {
-  static _Formatter currency({String symbol = '\$', int decimalDigits = 2}) {
-    return _Formatter(symbol: symbol, decimalDigits: decimalDigits);
-  }
-}
-
-class _Formatter {
-  final String symbol;
-  final int decimalDigits;
-  const _Formatter({required this.symbol, required this.decimalDigits});
-
-  String format(double value) {
-    final parts = value.toStringAsFixed(decimalDigits).split('.');
-    final intPart = parts[0];
-    final decPart = decimalDigits > 0 ? '.${parts[1]}' : '';
-
-    // Add commas
-    final buffer = StringBuffer();
-    for (int i = 0; i < intPart.length; i++) {
-      if (i > 0 && (intPart.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(intPart[i]);
-    }
-    return '$symbol$buffer$decPart';
-  }
-}

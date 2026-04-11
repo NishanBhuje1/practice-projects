@@ -1,8 +1,6 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'supabase_service.dart';
 import 'revenue_cat_service.dart';
 import 'analytics_service.dart';
@@ -178,6 +176,7 @@ class AuthService {
     await _client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: 'com.twowallet.twowallet://login-callback',
+      authScreenLaunchMode: LaunchMode.externalApplication,
     );
   }
 
@@ -209,45 +208,12 @@ class AuthService {
     );
   }
 
-  // Apple Sign In — native iOS using sign_in_with_apple + nonce for Supabase
+  // Apple Sign In — OAuth redirect via Supabase
   Future<void> signInWithApple() async {
-    final rawNonce = _client.auth.generateRawNonce();
-    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
-
-    final credential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: hashedNonce,
-    );
-
-    final idToken = credential.identityToken;
-    if (idToken == null) {
-      throw Exception('Apple Sign In failed — no ID token');
-    }
-
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.apple,
-      idToken: idToken,
-      nonce: rawNonce,
-    );
-
-    if (response.user == null) throw Exception('Supabase sign in failed');
-
-    final fullName = [
-      credential.givenName,
-      credential.familyName,
-    ].where((e) => e != null && e.isNotEmpty).join(' ');
-
-    await RevenueCatService.init(response.user!.id);
-    await AnalyticsService.identify(response.user!.id);
-
-    await _ensureHouseholdExists(
-      userId: response.user!.id,
-      displayName: fullName.isNotEmpty
-          ? fullName
-          : response.user!.email?.split('@')[0] ?? 'Partner',
+    await _client.auth.signInWithOAuth(
+      OAuthProvider.apple,
+      redirectTo: 'com.twowallet.twowallet://login-callback',
+      authScreenLaunchMode: LaunchMode.externalApplication,
     );
   }
 

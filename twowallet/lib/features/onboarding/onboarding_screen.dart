@@ -17,6 +17,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
   final int _totalPages = 3;
+  bool _loading = false;
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
@@ -58,7 +59,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _signInWithApple() async {
+    if (_loading) return;
     try {
+      setState(() => _loading = true);
       await ref.read(authServiceProvider).signInWithApple();
       await OnboardingController.markOnboardingComplete();
       if (mounted) context.go('/home');
@@ -68,6 +71,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           SnackBar(content: Text('Apple sign in failed: $e')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 

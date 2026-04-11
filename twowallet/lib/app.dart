@@ -32,31 +32,30 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isLoggedIn = authState.value != null;
       final hasSeenOnboarding = await OnboardingController.hasSeenOnboarding();
-      final isJoinScreen =
-          state.matchedLocation.startsWith('/onboarding/join');
-      final isAuthScreen = state.matchedLocation == '/onboarding' ||
-          state.matchedLocation == '/onboarding/signup' ||
-          state.matchedLocation == '/signin' ||
-          isJoinScreen;
 
-      if (!isLoggedIn) {
-        // Never redirect the join screen away — it handles auth itself
-        if (!hasSeenOnboarding &&
-            state.matchedLocation != '/onboarding' &&
-            !isJoinScreen) {
-          return '/onboarding';
+      if (isLoggedIn) {
+        // Always go home if logged in — never leave the user stuck on auth screens
+        if (state.matchedLocation == '/onboarding' ||
+            state.matchedLocation == '/onboarding/signup' ||
+            state.matchedLocation == '/signin') {
+          return '/home';
         }
-        if (!isAuthScreen) return '/signin';
         return null;
       }
 
-      // Logged in
-      if (state.matchedLocation == '/signin') return '/home';
-      if (state.matchedLocation == '/onboarding' ||
-          state.matchedLocation == '/onboarding/signup') {
-        final setupDone = await OnboardingController.hasCompletedSetup();
-        return setupDone ? '/home' : null;
+      // Not logged in
+      final isJoinScreen = state.matchedLocation.startsWith('/onboarding/join');
+      if (!hasSeenOnboarding &&
+          state.matchedLocation != '/onboarding' &&
+          !isJoinScreen) {
+        return '/onboarding';
       }
+
+      if (!state.matchedLocation.startsWith('/onboarding') &&
+          state.matchedLocation != '/signin') {
+        return '/onboarding';
+      }
+
       return null;
     },
     routes: [
