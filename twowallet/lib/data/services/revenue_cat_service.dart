@@ -15,13 +15,21 @@ class RevenueCatService {
   static const entitlementTogetherPlus = 'together_plus';
 
   /// Initializes RevenueCat with the provided Supabase User ID.
-  static Future<void> init(String userId) async {
-    await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
+  static Future<void> init(String? userId) async {
+    try {
+      if (_apiKey.isEmpty) {
+        debugPrint('RevenueCat API key not set — skipping init');
+        return;
+      }
 
-    final config = PurchasesConfiguration(_apiKey)
-      ..appUserID = userId;
+      await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
 
-    await Purchases.configure(config);
+      await Purchases.configure(
+        PurchasesConfiguration(_apiKey)..appUserID = userId,
+      );
+    } catch (e) {
+      debugPrint('RevenueCat init error: $e');
+    }
   }
 
   static Future<String> getCurrentTier() async {
@@ -35,8 +43,8 @@ class RevenueCatService {
       }
       return 'free';
     } catch (e) {
-      debugPrint('Error fetching tier: $e');
-      return 'free';
+      debugPrint('RevenueCat tier check failed: $e');
+      return 'together'; // Default to together during beta
     }
   }
 

@@ -39,12 +39,19 @@ class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
     final insightsAsync = ref.watch(moneyDateInsightsProvider(weekKey));
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.grey.shade50,
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: const Text('Money Date'),
+        title: Text(
+          'Money Date',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.black87,
+          ),
+        ),
       ),
       body: insightsAsync.when(
         loading: () => const Center(

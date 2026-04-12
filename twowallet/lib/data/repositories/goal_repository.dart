@@ -105,6 +105,21 @@ class GoalRepository {
     });
   }
 
+  Future<void> updateGoal({
+    required String goalId,
+    required String name,
+    required double targetAmountAud,
+    String? emoji,
+    String? targetDate,
+  }) async {
+    await _client.from('goals').update({
+      'name': name,
+      'emoji': emoji,
+      'target_amount_aud': targetAmountAud,
+      'target_date': targetDate,
+    }).eq('id', goalId);
+  }
+
   Future<void> archiveGoal(String goalId) async {
     await _client
         .from('goals')

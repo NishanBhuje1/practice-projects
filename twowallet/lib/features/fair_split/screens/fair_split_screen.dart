@@ -36,8 +36,19 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
     final transactionsAsync = ref.watch(oursTransactionsProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Fair split'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Fair Split',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.black87,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () {},

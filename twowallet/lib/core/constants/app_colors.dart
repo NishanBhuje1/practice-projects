@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // ── System backgrounds ────────────────────────────────────────────────────
-  static const background = Color(0xFFF2F2F7);   // iOS grouped background
+  static const background = Color(0xFFF0FAF6);   // very light green tint
   static const surface    = Color(0xFFFFFFFF);
 
   // ── Text ──────────────────────────────────────────────────────────────────
