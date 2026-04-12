@@ -11,8 +11,9 @@ import '../../../data/models/partner.dart';
 import '../providers/home_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
-import '../../../data/services/seed_data_service.dart';
 import '../../spending/screens/transaction_detail_sheet.dart';
+import '../widgets/getting_started_card.dart';
+import '../widgets/invite_partner_card.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // HomeScreen
@@ -48,6 +49,8 @@ class HomeScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _PausedBanner(),
+                  const GettingStartedCard(),
+                  const InvitePartnerCard(),
                   _BucketCards(),
                   const SizedBox(height: 24),
                   _QuickActionsRow(),
@@ -182,9 +185,10 @@ class _GreetingHeader extends ConsumerWidget {
     AsyncValue<List<Transaction>> txAsync,
     WidgetRef ref,
   ) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    final displayName = name.isNotEmpty ? name : '';
+    final fullName = name.trim();
+    final firstName = fullName.contains(' ') ? fullName.split(' ').first : fullName;
+    final displayFirst = firstName.isEmpty || firstName.contains('@') ? 'there' : firstName;
+    final displayName = displayFirst;
 
     // Find the most recent transaction by partner
     String partnerStatus = '';
@@ -205,12 +209,11 @@ class _GreetingHeader extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          displayName.isNotEmpty ? '$greeting, $displayName' : 'TwoWallet',
+          'Hey $displayName 👋',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            height: 1.1,
+            color: Colors.black87,
           ),
         ),
         if (partnerStatus.isNotEmpty) ...[
@@ -1029,20 +1032,6 @@ class _RecentTransactions extends ConsumerStatefulWidget {
 class _RecentTransactionsState extends ConsumerState<_RecentTransactions> {
   List<Transaction> _cache = [];
   List<Partner>     _partnerCache = [];
-  bool _seeding = false;
-
-  Future<void> _loadSampleData() async {
-    setState(() => _seeding = true);
-    try {
-      await SeedDataService.seed();
-      ref.invalidate(recentTransactionsProvider);
-      ref.invalidate(allTransactionsThisMonthProvider);
-      ref.invalidate(bucketTotalsProvider);
-      ref.invalidate(fairSplitResultProvider);
-    } finally {
-      if (mounted) setState(() => _seeding = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1088,7 +1077,7 @@ class _RecentTransactionsState extends ConsumerState<_RecentTransactions> {
         if (isFirstLoad)
           const _RecentShimmer()
         else if (transactions.isEmpty)
-          _EmptyTransactions(seeding: _seeding, onSeed: _loadSampleData)
+          const _EmptyTransactions()
         else
           _GroupedTransactions(transactions: transactions, partners: partners),
       ],
@@ -1097,10 +1086,7 @@ class _RecentTransactionsState extends ConsumerState<_RecentTransactions> {
 }
 
 class _EmptyTransactions extends StatelessWidget {
-  final bool seeding;
-  final VoidCallback onSeed;
-
-  const _EmptyTransactions({required this.seeding, required this.onSeed});
+  const _EmptyTransactions();
 
   @override
   Widget build(BuildContext context) {
@@ -1146,28 +1132,6 @@ class _EmptyTransactions extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          if (seeding)
-            const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ours),
-            )
-          else
-            TextButton(
-              onPressed: onSeed,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.ours,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-              child: Text(
-                'Load sample data',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
         ],
       ),
     );

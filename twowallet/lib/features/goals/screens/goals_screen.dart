@@ -34,15 +34,52 @@ class GoalsScreen extends ConsumerWidget {
         elevation: 0,
         title: Text('Goals',
             style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => canCreate
-                ? _showCreateGoalSheet(context, ref)
-                : context.push('/paywall'),
-          ),
-        ],
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: GestureDetector(
+          onTap: () => canCreate
+              ? _showCreateGoalSheet(context, ref)
+              : context.push('/paywall'),
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1D9E75), Color(0xFF158A65)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1D9E75).withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.add_circle_outline,
+                    color: Colors.white, size: 22),
+                const SizedBox(width: 10),
+                Text(
+                  'Create a new goal',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: goalsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -59,7 +96,7 @@ class GoalsScreen extends ConsumerWidget {
                       style: TextStyle(
                           fontSize: 16, color: Colors.grey.shade500)),
                   const SizedBox(height: 8),
-                  Text('Tap the + button above to create your first goal',
+                  Text('Tap the button below to create your first goal',
                       style: TextStyle(
                           fontSize: 13, color: Colors.grey.shade400)),
                 ],
@@ -68,7 +105,7 @@ class GoalsScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
             itemCount: goals.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _GoalCard(goal: goals[i]),

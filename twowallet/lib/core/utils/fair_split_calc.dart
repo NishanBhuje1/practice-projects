@@ -31,7 +31,9 @@ class FairSplitCalc {
     required String partnerAId,
     required String partnerBId,
   }) {
-    final splitRatioB = 1.0 - splitRatioA;
+    // Default to 50/50 if ratio is invalid
+    final ratio = (splitRatioA > 0 && splitRatioA < 1) ? splitRatioA : 0.5;
+    final splitRatioB = 1.0 - ratio;
 
     // Step 1: total shared spending
     final totalOurs = oursTransactions
@@ -39,7 +41,7 @@ class FairSplitCalc {
         .fold(0.0, (sum, t) => sum + t.amountAud.abs());
 
     // Step 2: fair share per partner
-    final partnerAShare = totalOurs * splitRatioA;
+    final partnerAShare = totalOurs * ratio;
     final partnerBShare = totalOurs * splitRatioB;
 
     // Step 3: what each partner actually paid

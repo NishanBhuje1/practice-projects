@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../core/utils/fair_split_calc.dart';
@@ -47,26 +48,86 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
           ),
         ],
       ),
-      body: resultAsync.when(
+      body: partnersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (result) {
-          if (result == null) {
+        data: (partners) {
+          if (partners.length < 2) {
             return const Center(
-                child: Text('Add some shared expenses to get started'));
+                child: Text('Waiting for your partner to join'));
           }
-          return partnersAsync.when(
+
+          final hasIncome = partners.every((p) =>
+              p.monthlyIncomeNetAud != null && p.monthlyIncomeNetAud! > 0);
+
+          if (!hasIncome) {
+            return Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF4E8),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: const Color(0xFFBA7517).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.info_outline,
+                      color: Color(0xFFBA7517), size: 32),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Set your incomes to calculate a fair split',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Add your monthly take-home pay so TwoWallet can calculate who should contribute what.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => _showIncomeSetupSheet(context, ref),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFBA7517),
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Set incomes',
+                        style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final partnerA =
+              partners.firstWhere((p) => p.role == 'partner_a');
+          final partnerB =
+              partners.firstWhere((p) => p.role == 'partner_b');
+
+          return resultAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
-            data: (partners) {
-              if (partners.length < 2) {
+            data: (result) {
+              if (result == null) {
                 return const Center(
-                    child: Text('Waiting for your partner to join'));
+                    child: Text('Add some shared expenses to get started'));
               }
-              final partnerA =
-                  partners.firstWhere((p) => p.role == 'partner_a');
-              final partnerB =
-                  partners.firstWhere((p) => p.role == 'partner_b');
+
               final fromPartner =
                   result.fromPartnerId == partnerA.id ? partnerA : partnerB;
               final toPartner =
@@ -112,6 +173,123 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showIncomeSetupSheet(BuildContext context, WidgetRef ref) {
+    final myIncomeController = TextEditingController();
+    final partnerIncomeController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Set monthly incomes',
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('Enter monthly take-home pay after tax',
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: Colors.grey.shade500)),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: myIncomeController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'My monthly income',
+                prefixText: '\$ ',
+                hintText: '5000',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: partnerIncomeController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "Partner's monthly income",
+                prefixText: '\$ ',
+                hintText: '5000',
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () async {
+                final myIncome =
+                    double.tryParse(myIncomeController.text);
+                final partnerIncome =
+                    double.tryParse(partnerIncomeController.text);
+                if (myIncome == null || partnerIncome == null) return;
+
+                final client = Supabase.instance.client;
+                final userId = client.auth.currentUser?.id;
+                final partners = ref.read(partnersProvider).value ?? [];
+                final me =
+                    partners.firstWhere((p) => p.userId == userId);
+                final partner =
+                    partners.firstWhere((p) => p.userId != userId);
+
+                final total = myIncome + partnerIncome;
+                final myRatio = myIncome / total;
+
+                await client
+                    .from('partners')
+                    .update({'monthly_income_net_aud': myIncome})
+                    .eq('id', me.id);
+                await client
+                    .from('partners')
+                    .update({'monthly_income_net_aud': partnerIncome})
+                    .eq('id', partner.id);
+
+                await client
+                    .from('households')
+                    .update({
+                      'split_ratio_a':
+                          me.role == 'partner_a' ? myRatio : 1 - myRatio,
+                      'split_method': 'income_ratio',
+                    })
+                    .eq('id', me.householdId);
+
+                ref.invalidate(partnersProvider);
+                ref.invalidate(fairSplitResultProvider);
+
+                if (context.mounted) Navigator.pop(context);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1D9E75),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('Save incomes',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
