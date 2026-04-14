@@ -7,6 +7,7 @@ import '../../../data/models/transaction.dart';
 import '../../../data/models/partner.dart';
 import '../providers/spending_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
+import 'transaction_detail_sheet.dart';
 
 class SpendingScreen extends ConsumerWidget {
   const SpendingScreen({super.key});
@@ -316,62 +317,65 @@ class _TxRow extends StatelessWidget {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: bucketLight,
-                  borderRadius: BorderRadius.circular(8),
+        InkWell(
+          onTap: () => showTransactionDetail(context, tx),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: bucketLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(bucketLabel,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: bucketColor)),
+                  ),
                 ),
-                child: Center(
-                  child: Text(bucketLabel,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: bucketColor)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(tx.merchantName,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    Row(
-                      children: [
-                        Text(tx.category ?? tx.bucket,
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500)),
-                        if (partner != null) ...[
-                          Text(' · ',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade400)),
-                          Text(partner.displayName,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tx.merchantName,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500)),
+                      Row(
+                        children: [
+                          Text(tx.category ?? tx.bucket,
                               style: TextStyle(
                                   fontSize: 12, color: Colors.grey.shade500)),
+                          if (partner != null) ...[
+                            Text(' · ',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey.shade400)),
+                            Text(partner.displayName,
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey.shade500)),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                tx.isIncome
-                    ? '+${tx.amountAud.toAUD()}'
-                    : '-${tx.amountAud.abs().toAUD()}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: tx.isIncome ? AppColors.ours : Colors.black87,
+                Text(
+                  tx.isIncome
+                      ? '+${tx.amountAud.toAUD()}'
+                      : '-${tx.amountAud.abs().toAUD()}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: tx.isIncome ? AppColors.ours : Colors.black87,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         if (!isLast)

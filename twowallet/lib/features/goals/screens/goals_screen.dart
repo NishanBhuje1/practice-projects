@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/goal.dart';
-import '../../../data/models/partner.dart';
 import '../providers/goals_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
@@ -193,22 +192,7 @@ class _GoalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final totalsAsync = ref.watch(goalContributionTotalsProvider(goal.id));
-    final partnersAsync = ref.watch(
-        Provider((ref) => ref.watch(
-            // access partners from auth provider
-            Provider<AsyncValue<List<Partner>>>((ref) =>
-                ref.watch(
-                  Provider((ref) => AsyncData<List<Partner>>([])))))));
-
-    return ref
-        .watch(Provider<AsyncValue<List<Partner>>>((ref) =>
-            ref.watch(Provider((ref) => AsyncData<List<Partner>>([])))
-        ))
-        .when(
-          data: (_) => _buildCard(context, ref, totalsAsync),
-          error: (_, __) => _buildCard(context, ref, totalsAsync),
-          loading: () => _buildCard(context, ref, totalsAsync),
-        );
+    return _buildCard(context, ref, totalsAsync);
   }
 
   Widget _buildCard(BuildContext context, WidgetRef ref,
