@@ -21,10 +21,18 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
   Future<void> _shareLink(String householdId) async {
     final link = AuthService().generateInviteLink(householdId);
     AnalyticsService.partnerInvited();
-    await Share.share(
-      'Join my TwoWallet household! Tap the link to get started: $link',
-      subject: 'Join me on TwoWallet',
-    );
+    try {
+      await Share.share(
+        'Join my TwoWallet household! Tap the link to get started: $link',
+        subject: 'Join me on TwoWallet',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _copyLink(String householdId) async {

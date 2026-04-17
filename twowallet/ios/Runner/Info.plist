@@ -2,12 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>GIDClientID</key>
+		<string>622109443459-3okcnsms9ijlkq1sl9njhfq5gjhgo9ii.apps.googleusercontent.com</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
 				<key>CFBundleURLSchemes</key>
 				<array>
 					<string>com.twowallet.twowallet</string>
+				</array>
+			</dict>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.622109443459-3okcnsms9ijlkq1sl9njhfq5gjhgo9ii</string>
+				</array>
+			</dict>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>com.twowallet.twowallet</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>twowallet</string>
 				</array>
 			</dict>
 		</array>
@@ -56,5 +72,11 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>TwoWallet needs to share data with your partner</string>
+		<key>NSBonjourServiceTypes</key>
+		<array>
+			<string>_twowallet._tcp</string>
+		</array>
 	</dict>
 </plist>

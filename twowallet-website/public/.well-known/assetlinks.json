@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.twowallet.twowallet",
+      "sha256_cert_fingerprints": [
+        "61:C3:47:55:99:70:B7:06:67:F6:D5:CB:DD:23:E0:0C:9B:E7:A9:75:B1:9C:19:8F:53:DD:51:62:66:E0:31:C6"
+      ]
+    }
+  }
+]

@@ -424,18 +424,6 @@ class _BottomActions extends StatelessWidget {
         children: [
           if (currentPage == 0) ...[
             _PrimaryButton(label: 'Get started', onTap: onGetStarted),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: onLogin,
-              child: Text(
-                'Log in',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ),
           ] else if (currentPage == 1) ...[
             _PrimaryButton(label: 'Continue', onTap: onNext),
           ] else ...[
@@ -453,7 +441,7 @@ class _BottomActions extends StatelessWidget {
               onTap: onApple,
             ),
             const SizedBox(height: 12),
-            _PrimaryButton(label: 'Start Tracking!', onTap: onStart),
+            _PrimaryButton(label: 'Start Tracking!', onTap: onLogin),
           ],
         ],
       ),

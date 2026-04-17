@@ -1,3 +1,4 @@
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -171,12 +172,45 @@ class AuthService {
     return 'https://twowallet.app/join?code=$householdId';
   }
 
-  // Google Sign In — OAuth redirect via Supabase (no SHA-1 / google-services.json required)
+  // Google Sign In — native sign in via google_sign_in (no browser redirect)
   Future<void> signInWithGoogle() async {
-    await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'com.twowallet.twowallet://login-callback',
-      authScreenLaunchMode: LaunchMode.externalApplication,
+    const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+    const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+
+    final googleSignIn = GoogleSignIn(
+      clientId: iosClientId.isNotEmpty ? iosClientId : null,
+      serverClientId: webClientId.isNotEmpty ? webClientId : null,
+      scopes: ['email', 'profile'],
+    );
+
+    await googleSignIn.signOut(); // Clear any cached session
+
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) throw Exception('Google sign in cancelled');
+
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
+    final accessToken = googleAuth.accessToken;
+
+    if (idToken == null) throw Exception('No ID token from Google');
+
+    final response = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+
+    if (response.user == null) throw Exception('Supabase sign in failed');
+
+    final fullName = googleUser.displayName ??
+        response.user!.email?.split('@')[0] ??
+        'Partner';
+
+    await RevenueCatService.init(response.user!.id);
+    await AnalyticsService.identify(response.user!.id);
+    await _ensureHouseholdExists(
+      userId: response.user!.id,
+      displayName: fullName,
     );
   }
 
@@ -190,11 +224,12 @@ class AuthService {
     final fullName = user.userMetadata?['full_name'] as String? ??
         user.userMetadata?['name'] as String?;
 
-    // Fix display_name if it was saved as an email address
+    // Fix display_name if it was saved as an email address — write first name only
     if (fullName != null && fullName.isNotEmpty) {
+      final firstName = _resolveFirstName(fullName);
       await _client
           .from('partners')
-          .update({'display_name': fullName})
+          .update({'display_name': firstName})
           .eq('user_id', user.id)
           .filter('display_name', 'like', '%@%');
     }
@@ -217,22 +252,38 @@ class AuthService {
     );
   }
 
+  // Resolves the best available display name to a first name only.
+  String _resolveFirstName(String displayName) {
+    final user = _client.auth.currentUser;
+    String? name;
+
+    // 1. Use provided display name if it's not an email address
+    if (displayName.isNotEmpty && !displayName.contains('@')) {
+      name = displayName;
+    }
+
+    // 2. Try Google / Apple user metadata in priority order
+    name ??= user?.userMetadata?['full_name'] as String?;
+    name ??= user?.userMetadata?['name'] as String?;
+    name ??= user?.userMetadata?['given_name'] as String?;
+
+    // 3. Fall back to capitalised email username
+    if (name == null || name.isEmpty) {
+      final emailPart = user?.email?.split('@')[0] ?? 'Partner';
+      name = emailPart[0].toUpperCase() + emailPart.substring(1);
+    }
+
+    // Extract first name only (split on space or underscore)
+    final firstName = name.split(RegExp(r'[\s_]+')).first;
+    return firstName.isEmpty ? 'Partner' : firstName;
+  }
+
   // Create household if user doesn't have one yet
   Future<void> _ensureHouseholdExists({
     required String userId,
     required String displayName,
   }) async {
-    // Prefer metadata name over a raw email address
-    final user = _client.auth.currentUser;
-    String name = displayName;
-
-    if (name.isEmpty || name.contains('@')) {
-      name = user?.userMetadata?['full_name'] as String? ??
-          user?.userMetadata?['name'] as String? ??
-          user?.userMetadata?['given_name'] as String? ??
-          user?.email?.split('@')[0] ??
-          'Partner';
-    }
+    final firstName = _resolveFirstName(displayName);
 
     final existing = await _client
         .from('partners')
@@ -245,7 +296,7 @@ class AuthService {
     final household = await _client
         .from('households')
         .insert({
-          'name': "$name's household",
+          'name': "$firstName's household",
           'split_ratio_a': 0.5,
           'split_method': 'fifty_fifty',
           'private_pocket_a_aud': 200,
@@ -258,7 +309,7 @@ class AuthService {
     await _client.from('partners').insert({
       'household_id': household['id'],
       'user_id': userId,
-      'display_name': name,
+      'display_name': firstName,
       'role': 'partner_a',
     });
   }
