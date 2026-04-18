@@ -3,30 +3,31 @@
 <plist version="1.0">
 	<dict>
 		<key>GIDClientID</key>
-		<string>622109443459-3okcnsms9ijlkq1sl9njhfq5gjhgo9ii.apps.googleusercontent.com</string>
+		<string>467973960326-sb4ohgubc8855s2p1oegi0jhnih9pctd.apps.googleusercontent.com</string>
+		
 		<key>CFBundleURLTypes</key>
 		<array>
-			<dict>
-				<key>CFBundleURLSchemes</key>
-				<array>
-					<string>com.twowallet.twowallet</string>
-				</array>
-			</dict>
-			<dict>
-				<key>CFBundleURLSchemes</key>
-				<array>
-					<string>com.googleusercontent.apps.622109443459-3okcnsms9ijlkq1sl9njhfq5gjhgo9ii</string>
-				</array>
-			</dict>
+			<!-- TwoWallet app scheme -->
 			<dict>
 				<key>CFBundleURLName</key>
 				<string>com.twowallet.twowallet</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
+					<string>com.twowallet.twowallet</string>
 					<string>twowallet</string>
 				</array>
 			</dict>
+			<!-- Google Sign In scheme -->
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>Google Sign In</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.467973960326-sb4ohgubc8855s2p1oegi0jhnih9pctd</string>
+				</array>
+			</dict>
 		</array>
+
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
@@ -47,12 +48,15 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
+		
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
@@ -66,12 +70,14 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>TwoWallet needs to share data with your partner</string>
 		<key>NSBonjourServiceTypes</key>
