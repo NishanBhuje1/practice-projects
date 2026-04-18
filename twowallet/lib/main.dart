@@ -39,7 +39,11 @@ void main() async {
 
   final user = Supabase.instance.client.auth.currentUser;
   if (user != null) {
-    await RevenueCatService.init(user.id);
+    try {
+      await RevenueCatService.init(user.id);
+    } catch (e) {
+      debugPrint('RevenueCat init failed: $e — continuing without subscriptions');
+    }
   }
 
   runApp(const ProviderScope(child: TwoWalletApp()));

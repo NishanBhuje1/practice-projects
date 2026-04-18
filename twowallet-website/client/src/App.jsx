@@ -12,6 +12,7 @@ import Footer from './components/Footer.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsOfService from './pages/TermsOfService.jsx';
 import DeleteAccount from './pages/DeleteAccount.jsx';
+import JoinPage from './pages/JoinPage.jsx';
 
 function HomePage() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
+        <Route path="/join" element={<JoinPage />} />
       </Routes>
     </BrowserRouter>
   );

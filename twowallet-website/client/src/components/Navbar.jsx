@@ -23,6 +23,17 @@ export default function Navbar() {
         scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'
       }`}
     >
+      <div className="bg-[#1D9E75] text-white text-center py-2 px-4 text-sm">
+        🎉 TwoWallet is now available on Android —{' '}
+        <a
+          href="https://play.google.com/store/apps/details?id=com.twowallet.twowallet"
+          className="underline font-semibold"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Download now
+        </a>
+      </div>
       <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <a href="#" className="flex items-center gap-2 font-heading font-bold text-xl text-[#1D9E75]">

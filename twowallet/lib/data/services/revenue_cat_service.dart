@@ -3,6 +3,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 class RevenueCatService {
   static const _apiKey = String.fromEnvironment('REVENUECAT_API_KEY');
+  static bool _isConfigured = false;
 
   // Your product IDs — match these exactly in App Store / Play Store
   static const monthlyTogether = 'twowallet_together_monthly';
@@ -15,16 +16,32 @@ class RevenueCatService {
   static const entitlementTogetherPlus = 'together_plus';
 
   /// Initializes RevenueCat with the provided Supabase User ID.
-  static Future<void> init(String userId) async {
-    await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
+  static Future<void> init(String? userId) async {
+    try {
+      if (_apiKey.isEmpty) {
+        debugPrint('RevenueCat API key not set — skipping init');
+        _isConfigured = false;
+        return;
+      }
 
-    final config = PurchasesConfiguration(_apiKey)
-      ..appUserID = userId;
+      await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
 
-    await Purchases.configure(config);
+      await Purchases.configure(
+        PurchasesConfiguration(_apiKey)..appUserID = userId,
+      );
+      _isConfigured = true;
+    } catch (e) {
+      debugPrint('RevenueCat init error: $e — app will work without subscriptions');
+      _isConfigured = false;
+    }
   }
 
   static Future<String> getCurrentTier() async {
+    if (!_isConfigured) {
+      debugPrint('RevenueCat not configured — returning together tier');
+      return 'together'; // Default to together during beta
+    }
+
     try {
       final info = await Purchases.getCustomerInfo();
       if (info.entitlements.active.containsKey(entitlementTogetherPlus)) {
@@ -35,8 +52,8 @@ class RevenueCatService {
       }
       return 'free';
     } catch (e) {
-      debugPrint('Error fetching tier: $e');
-      return 'free';
+      debugPrint('RevenueCat tier check failed: $e');
+      return 'together'; // Default to together during beta
     }
   }
 

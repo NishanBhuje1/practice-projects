@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/goal.dart';
-import '../../../data/models/partner.dart';
 import '../providers/goals_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
@@ -28,84 +27,140 @@ class GoalsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.grey.shade50,
+        backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Goals',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
-        child: GestureDetector(
-          onTap: () => canCreate
-              ? _showCreateGoalSheet(context, ref)
-              : context.push('/paywall'),
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1D9E75), Color(0xFF158A65)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1D9E75).withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.add_circle_outline,
-                    color: Colors.white, size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  'Create a new goal',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Goals',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.black87,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () => canCreate
+                  ? _showCreateGoalSheet(context, ref)
+                  : context.push('/paywall'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.ours,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.ours.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add, color: Colors.white, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      'New',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: goalsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (goals) {
           if (goals.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.flag_outlined,
-                      size: 48, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text('No goals yet',
-                      style: TextStyle(
-                          fontSize: 16, color: Colors.grey.shade500)),
-                  const SizedBox(height: 8),
-                  Text('Tap the button below to create your first goal',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade400)),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.flag_outlined,
+                        size: 56, color: Colors.grey.shade300),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No goals yet',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Set a savings goal and work towards it together.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    GestureDetector(
+                      onTap: () => canCreate
+                          ? _showCreateGoalSheet(context, ref)
+                          : context.push('/paywall'),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1D9E75), Color(0xFF158A65)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  const Color(0xFF1D9E75).withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.add_circle_outline,
+                                color: Colors.white, size: 22),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Create your first goal',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 200),
             itemCount: goals.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _GoalCard(goal: goals[i]),
@@ -137,29 +192,14 @@ class _GoalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final totalsAsync = ref.watch(goalContributionTotalsProvider(goal.id));
-    final partnersAsync = ref.watch(
-        Provider((ref) => ref.watch(
-            // access partners from auth provider
-            Provider<AsyncValue<List<Partner>>>((ref) =>
-                ref.watch(
-                  Provider((ref) => AsyncData<List<Partner>>([])))))));
-
-    return ref
-        .watch(Provider<AsyncValue<List<Partner>>>((ref) =>
-            ref.watch(Provider((ref) => AsyncData<List<Partner>>([])))
-        ))
-        .when(
-          data: (_) => _buildCard(context, ref, totalsAsync),
-          error: (_, __) => _buildCard(context, ref, totalsAsync),
-          loading: () => _buildCard(context, ref, totalsAsync),
-        );
+    return _buildCard(context, ref, totalsAsync);
   }
 
   Widget _buildCard(BuildContext context, WidgetRef ref,
       AsyncValue<Map<String, double>> totalsAsync) {
     return totalsAsync.when(
       loading: () => _GoalCardShell(goal: goal, partnerATot: 0, partnerBTotal: 0),
-error: (_, __) => _GoalCardShell(goal: goal, partnerATot: 0, partnerBTotal: 0),
+      error: (_, __) => _GoalCardShell(goal: goal, partnerATot: 0, partnerBTotal: 0),
       data: (totals) {
         final entries = totals.entries.toList();
         final partnerATot = entries.isNotEmpty ? entries[0].value : 0.0;
@@ -169,8 +209,96 @@ error: (_, __) => _GoalCardShell(goal: goal, partnerATot: 0, partnerBTotal: 0),
           partnerATot: partnerATot,
           partnerBTotal: partnerBTot,
           onAddContribution: () => _showAddContribution(context, ref),
+          onLongPress: () => _showGoalActions(context, ref),
         );
       },
+    );
+  }
+
+  void _showGoalActions(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text('Edit goal',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    useRootNavigator: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) => _EditGoalSheet(goal: goal),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline,
+                    color: Colors.redAccent),
+                title: Text('Delete goal',
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('Delete "${goal.name}"?',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700)),
+                      content: Text(
+                        'This will remove the goal and its progress.',
+                        style: GoogleFonts.inter(fontSize: 14),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            ref
+                                .read(goalsNotifierProvider.notifier)
+                                .deleteGoal(goal.id);
+                          },
+                          style: FilledButton.styleFrom(
+                              backgroundColor: Colors.redAccent),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -192,12 +320,14 @@ class _GoalCardShell extends StatelessWidget {
   final double partnerATot;
   final double partnerBTotal;
   final VoidCallback? onAddContribution;
+  final VoidCallback? onLongPress;
 
   const _GoalCardShell({
     required this.goal,
     this.partnerATot = 0,
     required this.partnerBTotal,
     this.onAddContribution,
+    this.onLongPress,
   });
 
   @override
@@ -215,7 +345,9 @@ class _GoalCardShell extends StatelessWidget {
       daysLeft = diff > 0 ? '$diff days left' : 'Past due';
     }
 
-    return Card(
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -337,6 +469,144 @@ class _GoalCardShell extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    ));
+  }
+}
+
+// ── Edit goal sheet ───────────────────────────────────────────────────────────
+
+class _EditGoalSheet extends ConsumerStatefulWidget {
+  final Goal goal;
+  const _EditGoalSheet({required this.goal});
+
+  @override
+  ConsumerState<_EditGoalSheet> createState() => _EditGoalSheetState();
+}
+
+class _EditGoalSheetState extends ConsumerState<_EditGoalSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+  late String _selectedEmoji;
+  bool _loading = false;
+
+  final _emojis = ['🎯', '✈️', '🏠', '🚗', '💍', '👶', '🛡️', '🏦', '🎓', '💰'];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.goal.name);
+    _amountController = TextEditingController(
+        text: widget.goal.targetAmountAud.toStringAsFixed(0));
+    _selectedEmoji = widget.goal.emoji ?? '🎯';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_nameController.text.isEmpty) return;
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) return;
+
+    setState(() => _loading = true);
+    await ref.read(goalsNotifierProvider.notifier).updateGoal(
+      goalId: widget.goal.id,
+      name: _nameController.text.trim(),
+      targetAmountAud: amount,
+      emoji: _selectedEmoji,
+      targetDate: widget.goal.targetDate,
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24, right: 24, top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Edit goal',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 16),
+
+          // Emoji picker
+          SizedBox(
+            height: 44,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _emojis.length,
+              itemBuilder: (_, i) {
+                final e = _emojis[i];
+                final selected = e == _selectedEmoji;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedEmoji = e),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.oursLight
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: selected
+                          ? Border.all(color: AppColors.ours)
+                          : null,
+                    ),
+                    child: Center(
+                        child: Text(e,
+                            style: const TextStyle(fontSize: 20))),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Goal name',
+              border: OutlineInputBorder(),
+            ),
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amountController,
+            decoration: const InputDecoration(
+              labelText: 'Target amount',
+              prefixText: '\$ ',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 20),
+
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _loading ? null : _submit,
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.ours,
+                  padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: _loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Save changes'),
+            ),
+          ),
+        ],
       ),
     );
   }

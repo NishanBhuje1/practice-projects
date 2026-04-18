@@ -45,6 +45,34 @@ class GoalsNotifier extends AsyncNotifier<void> {
     });
   }
 
+  Future<void> updateGoal({
+    required String goalId,
+    required String name,
+    required double targetAmountAud,
+    String? emoji,
+    String? targetDate,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(goalRepoProvider).updateGoal(
+        goalId: goalId,
+        name: name,
+        targetAmountAud: targetAmountAud,
+        emoji: emoji,
+        targetDate: targetDate,
+      );
+      ref.invalidate(goalsProvider);
+    });
+  }
+
+  Future<void> deleteGoal(String goalId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(goalRepoProvider).archiveGoal(goalId);
+      ref.invalidate(goalsProvider);
+    });
+  }
+
   Future<void> createGoal({
     required String name,
     required double targetAmountAud,

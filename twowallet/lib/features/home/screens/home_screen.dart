@@ -49,16 +49,16 @@ class HomeScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _PausedBanner(),
-                  const GettingStartedCard(),
                   const InvitePartnerCard(),
+                  _UpgradeBanner(),
                   _BucketCards(),
                   const SizedBox(height: 24),
                   _QuickActionsRow(),
                   const SizedBox(height: 20),
-                  _UpgradeBanner(),
                   _FairSplitBanner(),
                   const SizedBox(height: 24),
                   _RecentTransactions(),
+                  const GettingStartedCard(),
                 ]),
               ),
             ),
@@ -74,32 +74,21 @@ class HomeScreen extends ConsumerWidget {
 class _GreetingHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final partnersAsync = ref.watch(partnersProvider);
-    final txAsync = ref.watch(recentTransactionsProvider);
-
     return SliverToBoxAdapter(
       child: SafeArea(
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 16, 20),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: partnersAsync.when(
-                  loading: () => _buildGreetingText('', '', txAsync, ref),
-                  error: (_, __) => _buildGreetingText('', '', txAsync, ref),
-                  data: (partners) {
-                    final userId = ref.watch(authUserProvider).value?.id;
-                    final me = partners.where((p) => p.userId == userId).firstOrNull;
-                    final other = partners.where((p) => p.userId != userId).firstOrNull;
-                    return _buildGreetingText(
-                      me?.displayName ?? '',
-                      other?.displayName ?? '',
-                      txAsync,
-                      ref,
-                    );
-                  },
+              Text(
+                'TwoWallet',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
               ),
               // Profile menu
@@ -178,57 +167,6 @@ class _GreetingHeader extends ConsumerWidget {
       ),
     );
   }
-
-  Widget _buildGreetingText(
-    String name,
-    String partnerName,
-    AsyncValue<List<Transaction>> txAsync,
-    WidgetRef ref,
-  ) {
-    final fullName = name.trim();
-    final firstName = fullName.contains(' ') ? fullName.split(' ').first : fullName;
-    final displayFirst = firstName.isEmpty || firstName.contains('@') ? 'there' : firstName;
-    final displayName = displayFirst;
-
-    // Find the most recent transaction by partner
-    String partnerStatus = '';
-    if (txAsync.value != null && partnerName.isNotEmpty) {
-      final userId = ref.watch(authUserProvider).value?.id;
-      final partners = ref.watch(partnersProvider).value ?? [];
-      final me = partners.where((p) => p.userId == userId).firstOrNull;
-      final partnerTx = txAsync.value!
-          .where((t) => t.partnerId != me?.id && !t.isPrivate)
-          .firstOrNull;
-      if (partnerTx != null) {
-        final amount = partnerTx.amountAud.abs().toAUD();
-        partnerStatus = '$partnerName last added $amount';
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Hey $displayName 👋',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-        ),
-        if (partnerStatus.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            partnerStatus,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 // ── Paused banner ─────────────────────────────────────────────────────────────
@@ -292,7 +230,6 @@ class _BucketCards extends ConsumerWidget {
         final partners = partnersAsync.value ?? [];
         final userId   = ref.watch(authUserProvider).value?.id;
         final me       = partners.where((p) => p.userId == userId).firstOrNull;
-        final other    = partners.where((p) => p.userId != userId).firstOrNull;
         final transactions = txAsync.value ?? [];
         final allTxs   = allTxAsync.value ?? [];
 
@@ -317,7 +254,7 @@ class _BucketCards extends ConsumerWidget {
         return Column(
           children: [
             _MineBucketCard(
-              label: me?.displayName ?? 'My spending',
+              label: 'My spending',
               amount: totals.mine,
               total: combinedTotal > 0 ? combinedTotal : 1,
               lastTx: myLastTx,
@@ -332,7 +269,7 @@ class _BucketCards extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _PartnerBucketCard(
-              label: other?.displayName ?? "Partner's spending",
+              label: "Partner's spending",
               amount: totals.theirs,
               lastTx: theirLastTx,
             ),
@@ -1077,7 +1014,7 @@ class _RecentTransactionsState extends ConsumerState<_RecentTransactions> {
         if (isFirstLoad)
           const _RecentShimmer()
         else if (transactions.isEmpty)
-          const _EmptyTransactions()
+          const SizedBox.shrink()
         else
           _GroupedTransactions(transactions: transactions, partners: partners),
       ],
@@ -1085,58 +1022,6 @@ class _RecentTransactionsState extends ConsumerState<_RecentTransactions> {
   }
 }
 
-class _EmptyTransactions extends StatelessWidget {
-  const _EmptyTransactions();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.oursLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.receipt_long_outlined, size: 28, color: AppColors.ours),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No transactions yet',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Transactions you add will appear here',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _GroupedTransactions extends StatelessWidget {
   final List<Transaction> transactions;

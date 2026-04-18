@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "QL3CAM9UP5.com.twowallet.twowallet",
+        "paths": [
+          "/join/*",
+          "/join",
+          "/join?*"
+        ]
+      }
+    ]
+  }
+}

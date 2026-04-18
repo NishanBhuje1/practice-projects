@@ -95,10 +95,37 @@ class TransactionRepository {
         .eq('id', transactionId);
   }
 
+  Future<void> updateTransaction({
+    required String transactionId,
+    required double amountAud,
+    required String merchantName,
+    required String bucket,
+    required String category,
+    required bool isIncome,
+    required bool isPrivate,
+    String? notes,
+  }) async {
+    await _client.from('transactions').update({
+      'amount_aud':    amountAud,
+      'merchant_name': merchantName,
+      'bucket':        bucket,
+      'category':      category,
+      'is_income':     isIncome,
+      'is_private':    isPrivate,
+      'notes':         notes,
+    }).eq('id', transactionId);
+  }
+
   Future<void> deleteTransaction(String transactionId) async {
-    await _client
+    final deleted = await _client
         .from('transactions')
         .delete()
-        .eq('id', transactionId);
+        .eq('id', transactionId)
+        .select();
+
+    if (deleted.isEmpty) {
+      throw Exception(
+          'Delete failed — no rows removed. Check Supabase RLS policies for the transactions table.');
+    }
   }
 }

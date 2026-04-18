@@ -1,7 +1,7 @@
 name: twowallet
 description: Mine. Yours. Ours.
 publish_to: none
-version: 1.0.0+7
+version: 1.0.0+5
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -45,6 +45,7 @@ dependencies:
   posthog_flutter: ^4.0.1
 
   # Social sign in
+  google_sign_in: ^6.2.1
   sign_in_with_apple: ^6.1.0
   crypto: ^3.0.3
 

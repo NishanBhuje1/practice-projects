@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/deep_link_handler.dart';
 import 'shared/providers/auth_provider.dart';
 import 'features/onboarding/screens/signup_screen.dart';
 import 'features/onboarding/screens/invite_screen.dart';
 import 'features/onboarding/screens/join_screen.dart';
 import 'features/fair_split/screens/fair_split_screen.dart';
 import 'features/onboarding/screens/signin_screen.dart';
-import 'data/services/deep_link_service.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/goals/screens/goals_screen.dart';
 import 'features/spending/screens/spending_screen.dart';
@@ -44,7 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Not logged in
-      final isJoinScreen = state.matchedLocation.startsWith('/onboarding/join');
+      final isJoinScreen = state.matchedLocation.startsWith('/onboarding/join') ||
+          state.matchedLocation == '/join';
       if (!hasSeenOnboarding &&
           state.matchedLocation != '/onboarding' &&
           !isJoinScreen) {
@@ -52,7 +53,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (!state.matchedLocation.startsWith('/onboarding') &&
-          state.matchedLocation != '/signin') {
+          state.matchedLocation != '/signin' &&
+          state.matchedLocation != '/join') {
         return '/onboarding';
       }
 
@@ -72,6 +74,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding/join',
+        builder: (_, state) => JoinScreen(
+          householdId: state.uri.queryParameters['code'],
+        ),
+      ),
+      GoRoute(
+        path: '/join',
         builder: (_, state) => JoinScreen(
           householdId: state.uri.queryParameters['code'],
         ),
@@ -193,19 +201,33 @@ final _appTheme = ThemeData(
   ),
 );
 
-class TwoWalletApp extends ConsumerWidget {
+class TwoWalletApp extends ConsumerStatefulWidget {
   const TwoWalletApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-    final deepLinkService = ref.read(deepLinkServiceProvider);
-    deepLinkService.init(router);
-    deepLinkService.checkInitialLink(router);
+  ConsumerState<TwoWalletApp> createState() => _TwoWalletAppState();
+}
 
+class _TwoWalletAppState extends ConsumerState<TwoWalletApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) DeepLinkHandler.initialize(ref.read(routerProvider));
+    });
+  }
+
+  @override
+  void dispose() {
+    DeepLinkHandler.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'TwoWallet',
-      routerConfig: router,
+      routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,
       theme: _appTheme,
     );

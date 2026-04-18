@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/analytics_service.dart';
 import '../../../shared/providers/auth_provider.dart';
 
 class InvitePartnerCard extends ConsumerStatefulWidget {
@@ -12,70 +16,32 @@ class InvitePartnerCard extends ConsumerStatefulWidget {
 }
 
 class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
-  final _emailController = TextEditingController();
-  bool _showEmailInput = false;
-  bool _sending = false;
+  bool _minimised = false;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendEmailInvite() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
-    if (!email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email address')),
-      );
-      return;
-    }
-
-    setState(() => _sending = true);
-
+  Future<void> _shareLink(String householdId) async {
+    final link = AuthService().generateInviteLink(householdId);
+    AnalyticsService.partnerInvited();
     try {
-      final client = Supabase.instance.client;
-      final partners = ref.read(partnersProvider).value ?? [];
-      final userId = client.auth.currentUser?.id;
-      final me = partners.firstWhere((p) => p.userId == userId);
-      final householdId = me.householdId;
-
-      // 1. Create invite record
-      final invite = await client.from('household_invites').insert({
-        'household_id': householdId,
-        'invited_by_partner_id': me.id,
-        'invited_email': email,
-      }).select().single();
-
-      // 2. Call edge function to send email
-      await client.functions.invoke('send-partner-invite', body: {
-        'invite_id': invite['id'],
-        'invited_email': email,
-        'inviter_name': me.displayName,
-        'household_id': householdId,
-      });
-
-      if (mounted) {
-        setState(() {
-          _showEmailInput = false;
-          _emailController.clear();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Invite sent to $email ✉️'),
-            backgroundColor: const Color(0xFF1D9E75),
-          ),
-        );
-      }
+      await Share.share(
+        'Join my TwoWallet household! Tap the link to get started: $link',
+        subject: 'Join me on TwoWallet',
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send invite: $e')),
+          SnackBar(content: Text('Failed to share: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _copyLink(String householdId) async {
+    final link = AuthService().generateInviteLink(householdId);
+    await Clipboard.setData(ClipboardData(text: link));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invite link copied')),
+      );
     }
   }
 
@@ -87,160 +53,126 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (partners) {
-        // Only show when partner hasn't joined yet
         if (partners.length >= 2) return const SizedBox.shrink();
 
-        return Container(
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        final me = partners.where((p) => p.userId == userId).firstOrNull;
+        final householdId = me?.householdId ?? '';
+
+        return AnimatedOpacity(
+          duration: const Duration(milliseconds: 250),
+          opacity: _minimised ? 0.45 : 1.0,
+          child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF1D9E75),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1D9E75).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_add_outlined,
-                      color: Color(0xFF1D9E75),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Invite your partner',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Send them an email invite to join your household',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (_showEmailInput) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofocus: true,
-                  style: GoogleFonts.inter(fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'partner@email.com',
-                    hintStyle: GoogleFonts.inter(
-                        fontSize: 14, color: Colors.grey.shade400),
-                    prefixIcon: const Icon(Icons.email_outlined, size: 18),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF1D9E75)),
-                    ),
-                  ),
-                  onSubmitted: (_) => _sendEmailInvite(),
-                ),
-                const SizedBox(height: 12),
-                Row(
+              // ── Header row ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Icon(Icons.favorite, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: FilledButton(
-                        onPressed: _sending ? null : _sendEmailInvite,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1D9E75),
-                          minimumSize: const Size(double.infinity, 44),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                      child: Text(
+                        'Invite your partner',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                        child: _sending
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
-                              )
-                            : Text(
-                                'Send invite',
-                                style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white),
-                              ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => setState(() {
-                        _showEmailInput = false;
-                        _emailController.clear();
-                      }),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.inter(
-                            fontSize: 14, color: Colors.grey.shade500),
+                    GestureDetector(
+                      onTap: () => setState(() => _minimised = !_minimised),
+                      child: Icon(
+                        _minimised
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_up,
+                        color: Colors.white.withValues(alpha: 0.8),
+                        size: 22,
                       ),
                     ),
                   ],
                 ),
-              ] else ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => setState(() => _showEmailInput = true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1D9E75),
-                      minimumSize: const Size(double.infinity, 44),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text(
-                      'Invite by email',
-                      style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+
+              if (!_minimised) ...[
+                // ── Subtitle ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                  child: Text(
+                    'TwoWallet works best when both partners are connected.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
+                // ── Two action buttons ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => _shareLink(householdId),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF1D9E75),
+                            minimumSize: const Size(double.infinity, 44),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.ios_share, size: 16, color: Color(0xFF1D9E75)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Share link',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _copyLink(householdId),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(
+                                color: Colors.white, width: 1.5),
+                            minimumSize: const Size(double.infinity, 44),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text(
+                            'Copy link',
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 18),
               ],
             ],
           ),
-        );
+        ));
       },
     );
   }

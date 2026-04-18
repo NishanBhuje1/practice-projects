@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "467973960326-84kdj1lglepjniol9ebf413kul1ubm56.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.twowallet.twowallet",
+            "certificate_hash": "553bb83ec3938c73f603b41d58d59ca547db97b5"
+          }
+        },
+        {
           "client_id": "467973960326-k8hc12sgi4ogckaq2h06l5tpr3mdkmv7.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "467973960326-k8hc12sgi4ogckaq2h06l5tpr3mdkmv7.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "467973960326-sb4ohgubc8855s2p1oegi0jhnih9pctd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.twowallet.twowallet"
+              }
             }
           ]
         }

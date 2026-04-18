@@ -12,7 +12,7 @@ class AnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(monthlyTotalsProvider);
@@ -26,7 +26,7 @@ class AnalyticsScreen extends ConsumerWidget {
               expandedHeight: 100,
               floating: true,
               snap: true,
-              backgroundColor: const Color(0xFFF8F9FA),
+              backgroundColor: AppColors.background,
               elevation: 0,
               scrolledUnderElevation: 0,
               flexibleSpace: FlexibleSpaceBar(
@@ -34,7 +34,7 @@ class AnalyticsScreen extends ConsumerWidget {
                 title: Text(
                   'Analytics',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: Colors.black87,
                   ),
