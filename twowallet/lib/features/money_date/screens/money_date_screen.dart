@@ -153,10 +153,20 @@ class _WaitingForPartner extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () => Share.share(
-                'Join my TwoWallet household! $inviteLink',
-                subject: 'Join me on TwoWallet',
-              ),
+              onPressed: () async {
+                try {
+                  await Share.share(
+                    'Join my TwoWallet household! $inviteLink',
+                    subject: 'Join me on TwoWallet',
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not share: $e')),
+                    );
+                  }
+                }
+              },
               icon: const Icon(Icons.share_outlined, size: 18),
               label: const Text('Share invite'),
               style: OutlinedButton.styleFrom(

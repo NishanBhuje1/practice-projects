@@ -65,10 +65,18 @@ class InviteScreen extends ConsumerWidget {
                 label: const Text('Share invite link'),
                 onPressed: () async {
                   AnalyticsService.partnerInvited();
-                  await Share.share(
-                    'Join my TwoWallet household! Tap the link to get started: $inviteLink',
-                    subject: 'Join me on TwoWallet',
-                  );
+                  try {
+                    await Share.share(
+                      'Join my TwoWallet household! Tap the link to get started: $inviteLink',
+                      subject: 'Join me on TwoWallet',
+                    );
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not share: $e')),
+                      );
+                    }
+                  }
                 },
               ),
             ),
