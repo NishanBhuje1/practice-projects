@@ -155,9 +155,14 @@ class _WaitingForPartner extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () async {
                 try {
+                  final box = context.findRenderObject() as RenderBox?;
+                  final sharePositionOrigin = box != null
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null;
                   await Share.share(
                     'Join my TwoWallet household! $inviteLink',
                     subject: 'Join me on TwoWallet',
+                    sharePositionOrigin: sharePositionOrigin,
                   );
                 } catch (e) {
                   if (context.mounted) {

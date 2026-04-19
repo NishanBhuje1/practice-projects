@@ -22,9 +22,13 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
     final link = AuthService().generateInviteLink(householdId);
     AnalyticsService.partnerInvited();
     try {
+      final box = context.findRenderObject() as RenderBox?;
+      final sharePositionOrigin =
+          box != null ? box.localToGlobal(Offset.zero) & box.size : null;
       await Share.share(
         'Join my TwoWallet household! Tap the link to get started: $link',
         subject: 'Join me on TwoWallet',
+        sharePositionOrigin: sharePositionOrigin,
       );
     } catch (e) {
       if (mounted) {

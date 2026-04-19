@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -265,12 +267,48 @@ class AuthService {
     );
   }
 
-  // Apple Sign In — OAuth redirect via Supabase
+  // Apple Sign In — native via sign_in_with_apple (no browser redirect)
   Future<void> signInWithApple() async {
-    await _client.auth.signInWithOAuth(
-      OAuthProvider.apple,
-      redirectTo: 'com.twowallet.twowallet://login-callback',
-      authScreenLaunchMode: LaunchMode.externalApplication,
+    final rawNonce = _client.auth.generateRawNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: hashedNonce,
+    );
+
+    final idToken = credential.identityToken;
+    if (idToken == null) {
+      throw const AuthException('Could not find ID Token from Apple credential.');
+    }
+
+    final response = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.apple,
+      idToken: idToken,
+      nonce: rawNonce,
+    );
+
+    if (response.user == null) throw Exception('Supabase Apple sign in failed');
+
+    // Apple only provides name on first sign-in
+    String fullName = 'Partner';
+    if (credential.givenName != null || credential.familyName != null) {
+      fullName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+    } else {
+      fullName = response.user?.userMetadata?['full_name'] as String? ??
+          response.user?.email?.split('@')[0] ??
+          'Partner';
+    }
+    final firstName = fullName.split(RegExp(r'[\s_]')).first;
+
+    await RevenueCatService.init(response.user!.id);
+    await AnalyticsService.identify(response.user!.id);
+    await _ensureHouseholdExists(
+      userId: response.user!.id,
+      displayName: firstName,
     );
   }
 
