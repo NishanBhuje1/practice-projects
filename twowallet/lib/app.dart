@@ -27,6 +27,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/onboarding',
     redirect: (context, state) async {
+      // Allow /join regardless of auth state — deep-link invite flow
+      if (state.matchedLocation == '/join') return null;
+
       final authState = ref.watch(authUserProvider);
       if (authState.isLoading) return null;
 

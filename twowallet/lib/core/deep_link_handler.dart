@@ -23,7 +23,7 @@ class DeepLinkHandler {
       code = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
     }
     if (code != null && code.isNotEmpty) {
-      router.push('/join?code=$code');
+      router.go('/join?code=$code');
     }
   }
 }
