@@ -10,6 +10,7 @@ import '../../../data/models/transaction.dart';
 import '../../../data/models/settlement.dart';
 import '../../../data/models/partner.dart';
 import '../providers/fair_split_provider.dart';
+import '../providers/income_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../data/repositories/household_repository.dart';
 import '../../../data/services/analytics_service.dart';
@@ -34,6 +35,7 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
     final partnersAsync = ref.watch(partnersProvider);
     final historyAsync = ref.watch(settlementHistoryProvider);
     final transactionsAsync = ref.watch(oursTransactionsProvider);
+    final incomesAsync = ref.watch(householdIncomesProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -64,124 +66,153 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (partners) {
           if (partners.length < 2) {
-            return const Center(
-                child: Text('Waiting for your partner to join'));
+            return const Center(child: Text('Waiting for your partner to join'));
           }
 
-          final hasIncome = partners.every((p) =>
-              p.monthlyIncomeNetAud != null && p.monthlyIncomeNetAud! > 0);
+          final partnerA = partners.firstWhere((p) => p.role == 'partner_a');
+          final partnerB = partners.firstWhere((p) => p.role == 'partner_b');
 
-          if (!hasIncome) {
-            return Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF4E8),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: const Color(0xFFBA7517).withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.info_outline,
-                      color: Color(0xFFBA7517), size: 32),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Set your incomes to calculate a fair split',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add your monthly take-home pay so TwoWallet can calculate who should contribute what.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => _showIncomeSetupSheet(context, ref),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFBA7517),
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text('Set incomes',
+          final incomes = incomesAsync.value ?? [];
+          final validIncomes =
+              incomes.where((i) => i.monthlyIncome > 0).toList();
+          final totalIncome =
+              validIncomes.fold<double>(0, (s, i) => s + i.monthlyIncome);
+          final bothHaveIncome = validIncomes.length >= 2;
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            children: [
+              // ── Info banner ───────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        color: Colors.blue.shade700, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Income is auto-calculated from your income transactions over the last 3 months. Add income via the + button in the Spending tab.',
                         style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final partnerA =
-              partners.firstWhere((p) => p.role == 'partner_a');
-          final partnerB =
-              partners.firstWhere((p) => p.role == 'partner_b');
-
-          return resultAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (result) {
-              if (result == null) {
-                return const Center(
-                    child: Text('Add some shared expenses to get started'));
-              }
-
-              final fromPartner =
-                  result.fromPartnerId == partnerA.id ? partnerA : partnerB;
-              final toPartner =
-                  result.fromPartnerId == partnerA.id ? partnerB : partnerA;
-
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                children: [
-                  _SettlementHero(
-                    result: result,
-                    fromPartner: fromPartner,
-                    toPartner: toPartner,
-                    partnerA: partnerA,
-                    partnerB: partnerB,
-                  ),
-                  const SizedBox(height: 16),
-                  _SplitRatioCard(partnerA: partnerA, partnerB: partnerB),
-                  const SizedBox(height: 16),
-                  _ContributionsCard(
-                    result: result,
-                    partnerA: partnerA,
-                    partnerB: partnerB,
-                  ),
-                  const SizedBox(height: 16),
-                  transactionsAsync.when(
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                    data: (txs) => _SharedExpensesCard(
-                      transactions: txs,
-                      partnerA: partnerA,
-                      partnerB: partnerB,
+                          fontSize: 12,
+                          color: Colors.blue.shade900,
+                          height: 1.4,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  historyAsync.when(
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                    data: (history) => _HistoryCard(history: history),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              );
-            },
+                  ],
+                ),
+              ),
+
+              // ── Income cards ──────────────────────────────────────────
+              if (incomesAsync.isLoading)
+                const SizedBox(
+                  height: 88,
+                  child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else if (incomes.length >= 2)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PartnerIncomeCard(
+                        name: incomes[0].displayName,
+                        amount: incomes[0].monthlyIncome,
+                        sharePercent: totalIncome > 0
+                            ? incomes[0].monthlyIncome / totalIncome * 100
+                            : 50,
+                        source: incomes[0].source,
+                        monthsOfData: incomes[0].monthsOfData,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _PartnerIncomeCard(
+                        name: incomes[1].displayName,
+                        amount: incomes[1].monthlyIncome,
+                        sharePercent: totalIncome > 0
+                            ? incomes[1].monthlyIncome / totalIncome * 100
+                            : 50,
+                        source: incomes[1].source,
+                        monthsOfData: incomes[1].monthsOfData,
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+
+              // ── Fair split calculation or prompt ──────────────────────
+              if (!incomesAsync.isLoading && bothHaveIncome) ...[
+                resultAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => const SizedBox.shrink(),
+                  data: (result) {
+                    if (result == null) return const SizedBox.shrink();
+                    final fromPartner = result.fromPartnerId == partnerA.id
+                        ? partnerA
+                        : partnerB;
+                    final toPartner = result.fromPartnerId == partnerA.id
+                        ? partnerB
+                        : partnerA;
+                    return Column(
+                      children: [
+                        _SettlementHero(
+                          result: result,
+                          fromPartner: fromPartner,
+                          toPartner: toPartner,
+                          partnerA: partnerA,
+                          partnerB: partnerB,
+                        ),
+                        const SizedBox(height: 16),
+                        _SplitRatioCard(partnerA: partnerA, partnerB: partnerB),
+                        const SizedBox(height: 16),
+                        _ContributionsCard(
+                          result: result,
+                          partnerA: partnerA,
+                          partnerB: partnerB,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  },
+                ),
+              ] else if (!incomesAsync.isLoading) ...[
+                _IncomeSetupPrompt(
+                  incomes: incomes,
+                  onSetManual: () => _showIncomeSetupSheet(context, ref),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // ── Shared expenses (always shown) ────────────────────────
+              transactionsAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (txs) => txs.isEmpty
+                    ? const SizedBox.shrink()
+                    : _SharedExpensesCard(
+                        transactions: txs,
+                        partnerA: partnerA,
+                        partnerB: partnerB,
+                      ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Settlement history (always shown) ─────────────────────
+              historyAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (history) => _HistoryCard(history: history),
+              ),
+              const SizedBox(height: 32),
+            ],
           );
         },
       ),
@@ -189,8 +220,17 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
   }
 
   void _showIncomeSetupSheet(BuildContext context, WidgetRef ref) {
-    final myIncomeController = TextEditingController();
-    final partnerIncomeController = TextEditingController();
+    final partners = ref.read(partnersProvider).value ?? [];
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final me = partners.where((p) => p.userId == userId).firstOrNull;
+    if (me == null) return;
+
+    final incomeController = TextEditingController(
+      text: me.monthlyIncomeNetAud != null
+          ? me.monthlyIncomeNetAud!.toStringAsFixed(0)
+          : '',
+    );
+    bool visibleToPartner = me.incomeVisibleToPartner;
 
     showModalBottomSheet(
       context: context,
@@ -199,107 +239,112 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              24, 24, 24, MediaQuery.of(sheetContext).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text('Set monthly incomes',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            Text('Enter monthly take-home pay after tax',
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: Colors.grey.shade500)),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: myIncomeController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'My monthly income',
-                prefixText: '\$ ',
-                hintText: '5000',
+              const SizedBox(height: 20),
+              Text('My monthly income',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text('Monthly take-home pay after tax',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, color: Colors.grey.shade500)),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: incomeController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'My monthly income',
+                  prefixText: '\$ ',
+                  hintText: '5000',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: partnerIncomeController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: "Partner's monthly income",
-                prefixText: '\$ ',
-                hintText: '5000',
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('Visible to partner',
+                    style: GoogleFonts.inter(fontSize: 14)),
+                subtitle: Text(
+                  'Your partner can see this income for fair split',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500),
+                ),
+                value: visibleToPartner,
+                activeColor: const Color(0xFF1D9E75),
+                onChanged: (v) => setSheetState(() => visibleToPartner = v),
               ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () async {
-                final myIncome =
-                    double.tryParse(myIncomeController.text);
-                final partnerIncome =
-                    double.tryParse(partnerIncomeController.text);
-                if (myIncome == null || partnerIncome == null) return;
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  final income = double.tryParse(incomeController.text);
+                  if (income == null || income <= 0) return;
 
-                final client = Supabase.instance.client;
-                final userId = client.auth.currentUser?.id;
-                final partners = ref.read(partnersProvider).value ?? [];
-                final me =
-                    partners.firstWhere((p) => p.userId == userId);
-                final partner =
-                    partners.firstWhere((p) => p.userId != userId);
+                  final client = Supabase.instance.client;
 
-                final total = myIncome + partnerIncome;
-                final myRatio = myIncome / total;
+                  await client.from('partners').update({
+                    'monthly_income_net_aud': income,
+                    'income_visible_to_partner': visibleToPartner,
+                  }).eq('id', me.id);
 
-                await client
-                    .from('partners')
-                    .update({'monthly_income_net_aud': myIncome})
-                    .eq('id', me.id);
-                await client
-                    .from('partners')
-                    .update({'monthly_income_net_aud': partnerIncome})
-                    .eq('id', partner.id);
+                  // Update household ratio if both incomes are now visible
+                  final updatedPartners =
+                      await client.from('partners').select().eq(
+                            'household_id', me.householdId);
+                  final all = updatedPartners
+                      .map((j) => Partner.fromJson(j as Map<String, dynamic>))
+                      .toList();
+                  final other =
+                      all.where((p) => p.userId != userId).firstOrNull;
 
-                await client
-                    .from('households')
-                    .update({
+                  if (other != null &&
+                      other.monthlyIncomeNetAud != null &&
+                      other.incomeVisibleToPartner &&
+                      visibleToPartner) {
+                    final total = income + other.monthlyIncomeNetAud!;
+                    final myRatio = income / total;
+                    await client.from('households').update({
                       'split_ratio_a':
                           me.role == 'partner_a' ? myRatio : 1 - myRatio,
                       'split_method': 'income_ratio',
-                    })
-                    .eq('id', me.householdId);
+                    }).eq('id', me.householdId);
+                    ref.invalidate(fairSplitResultProvider);
+                    ref.invalidate(householdProvider);
+                  }
 
-                ref.invalidate(partnersProvider);
-                ref.invalidate(fairSplitResultProvider);
+                  ref.invalidate(partnersProvider);
+                  ref.invalidate(householdIncomesProvider);
 
-                if (context.mounted) Navigator.pop(context);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1D9E75),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1D9E75),
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Save',
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600, color: Colors.white)),
               ),
-              child: Text('Save incomes',
-                  style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -322,6 +367,145 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
       'Dec'
     ];
     return '${months[now.month - 1]} ${now.year}';
+  }
+}
+
+// ── Partner income card ───────────────────────────────────────────────────────
+
+class _PartnerIncomeCard extends StatelessWidget {
+  final String name;
+  final double amount;
+  final double sharePercent;
+  final String source;
+  final int monthsOfData;
+
+  const _PartnerIncomeCard({
+    required this.name,
+    required this.amount,
+    required this.sharePercent,
+    required this.source,
+    required this.monthsOfData,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasIncome = amount > 0;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasIncome ? '\$${amount.toStringAsFixed(0)}/mo' : 'Not set',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: hasIncome ? Colors.black87 : Colors.grey.shade400,
+              ),
+            ),
+            if (hasIncome) ...[
+              Text(
+                '${sharePercent.toStringAsFixed(0)}% share',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                source == 'calculated'
+                    ? 'Avg from $monthsOfData ${monthsOfData == 1 ? "month" : "months"}'
+                    : 'Manual entry',
+                style: GoogleFonts.inter(
+                    fontSize: 11, color: Colors.grey.shade400),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Income setup prompt ───────────────────────────────────────────────────────
+
+class _IncomeSetupPrompt extends StatelessWidget {
+  final List<PartnerIncome> incomes;
+  final VoidCallback onSetManual;
+
+  const _IncomeSetupPrompt({
+    required this.incomes,
+    required this.onSetManual,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final missingNames = incomes
+        .where((i) => i.monthlyIncome <= 0)
+        .map((i) => i.displayName)
+        .toList();
+
+    final message = missingNames.isEmpty
+        ? 'Add income transactions to unlock fair split'
+        : '${missingNames.join(" & ")} ${missingNames.length == 1 ? "hasn't" : "haven't"} logged income yet';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E8),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: const Color(0xFFBA7517).withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFFBA7517), size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: const Color(0xFFBA7517),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: onSetManual,
+                  child: Text(
+                    'Or set manual income →',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFBA7517),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

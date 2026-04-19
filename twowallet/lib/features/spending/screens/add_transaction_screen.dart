@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/models/transaction.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
+import '../../fair_split/providers/income_provider.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/spending_provider.dart';
 import '../../analytics/providers/analytics_provider.dart';
@@ -155,6 +156,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       ref.invalidate(monthlyTotalsProvider);
       ref.invalidate(lastMonthBucketBreakdownProvider);
       ref.invalidate(fairSplitResultProvider);
+      if (_isIncome) ref.invalidate(householdIncomesProvider);
 
       HapticFeedback.mediumImpact();
       setState(() { _showSuccess = true; _loading = false; });
