@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../onboarding_controller.dart';
 
@@ -16,69 +15,52 @@ class JoinScreen extends ConsumerStatefulWidget {
 
 class _JoinScreenState extends ConsumerState<JoinScreen> {
   bool _loading = false;
+  String? _error;
 
   Future<void> _joinHousehold() async {
-    if (widget.householdId == null) return;
-    setState(() => _loading = true);
+    if (widget.householdId == null || widget.householdId!.isEmpty) {
+      setState(() => _error = 'No invite code provided');
+      return;
+    }
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/signin?redirectTo=/join?code=${widget.householdId}');
+      }
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
-      final client = Supabase.instance.client;
-      final userId = client.auth.currentUser?.id;
-
-      if (userId == null) {
-        // Not logged in — save household ID and redirect to signup
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('pending_household_id', widget.householdId!);
-        if (mounted) context.push('/onboarding/signup');
-        return;
-      }
-
-      // Check if already in a household
-      final existing = await client
-          .from('partners')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (existing != null) {
-        if (mounted) context.go('/home');
-        return;
-      }
-
-      // Verify household exists
-      await client
-          .from('households')
-          .select('id')
-          .eq('id', widget.householdId!)
-          .single();
-
-      // Derive display name from auth metadata
-      final user = client.auth.currentUser!;
-      final displayName =
-          user.userMetadata?['full_name'] as String? ??
-          user.userMetadata?['display_name'] as String? ??
-          user.email?.split('@')[0] ??
-          'Partner';
-
-      // Join as partner_b
-      await client.from('partners').insert({
-        'household_id': widget.householdId,
-        'user_id': userId,
-        'display_name': displayName,
-        'role': 'partner_b',
-      });
+      await Supabase.instance.client.rpc(
+        'join_household_by_id',
+        params: {'p_household_id': widget.householdId},
+      );
 
       await OnboardingController.markOnboardingComplete();
       await OnboardingController.markSetupComplete();
-      if (mounted) context.go('/home');
-    } catch (e) {
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error joining household: $e')),
+          const SnackBar(
+            content: Text('Successfully joined household!'),
+            backgroundColor: Color(0xFF1D9E75),
+          ),
         );
+        context.go('/home');
       }
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('PostgrestException: ', '');
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -125,6 +107,20 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                 ),
               ),
               const Spacer(flex: 3),
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: Colors.red.shade900, fontSize: 14),
+                  ),
+                ),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 52,

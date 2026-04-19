@@ -34,7 +34,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
-      if (mounted) context.go('/home');
+      if (mounted) {
+        final redirectTo =
+            GoRouterState.of(context).uri.queryParameters['redirectTo'];
+        context.go(redirectTo ?? '/home');
+      }
     } catch (e) {
       setState(() {
         _error = 'Invalid email or password';
