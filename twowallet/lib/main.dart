@@ -42,7 +42,8 @@ void main() async {
     try {
       await RevenueCatService.init(user.id);
     } catch (e) {
-      debugPrint('RevenueCat init failed: $e — continuing without subscriptions');
+      debugPrint(
+          'RevenueCat init failed: $e — continuing without subscriptions');
     }
   }
 

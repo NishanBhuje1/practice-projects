@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "467973960326-cookm528okbh3g1rg1bb77ed481om5cj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.twowallet.twowallet",
+            "certificate_hash": "9840fba1add649a11e26d7dfed328eff7fc5f670"
+          }
+        },
+        {
           "client_id": "467973960326-k8hc12sgi4ogckaq2h06l5tpr3mdkmv7.apps.googleusercontent.com",
           "client_type": 3
         }
