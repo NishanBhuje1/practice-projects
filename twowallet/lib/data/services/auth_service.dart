@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -174,35 +172,19 @@ class AuthService {
     return 'https://twowallet.app/join?code=$householdId';
   }
 
-  String? _extractNonceFromIdToken(String idToken) {
-    try {
-      final parts = idToken.split('.');
-      if (parts.length != 3) return null;
-      var payload = parts[1];
-      while (payload.length % 4 != 0) {
-        payload += '=';
-      }
-      final decoded = utf8.decode(base64Url.decode(payload));
-      final json = jsonDecode(decoded) as Map<String, dynamic>;
-      return json['nonce'] as String?;
-    } catch (e) {
-      debugPrint('Failed to extract nonce from ID token: $e');
-      return null;
-    }
-  }
-
   // Google Sign In — native sign in via google_sign_in (no browser redirect)
   Future<void> signInWithGoogle() async {
     const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
-    const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 
+    // clientId intentionally null — passing an iOS clientId triggers auto-nonce
+    // which breaks Supabase's signInWithIdToken nonce validation.
     final googleSignIn = GoogleSignIn(
-      clientId: iosClientId.isNotEmpty ? iosClientId : null,
+      clientId: null,
       serverClientId: webClientId.isNotEmpty ? webClientId : null,
       scopes: ['email', 'profile'],
     );
 
-    await googleSignIn.signOut(); // Clear any cached session
+    await googleSignIn.signOut();
 
     final googleUser = await googleSignIn.signIn();
     if (googleUser == null) throw Exception('Google sign in cancelled');
@@ -213,13 +195,10 @@ class AuthService {
 
     if (idToken == null) throw Exception('No ID token from Google');
 
-    final nonce = _extractNonceFromIdToken(idToken);
-
     final response = await _client.auth.signInWithIdToken(
       provider: OAuthProvider.google,
       idToken: idToken,
       accessToken: accessToken,
-      nonce: nonce,
     );
 
     if (response.user == null) throw Exception('Supabase sign in failed');
