@@ -113,20 +113,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() { _loading = true; _error = null; });
 
     try {
-      // 'ours' and 'theirs' require a second partner in the household.
-      if (_bucket != 'mine') {
-        final partners = await ref.read(partnersProvider.future);
-        if (partners.length < 2) {
-          setState(() {
-            _error = _bucket == 'ours'
-                ? 'Invite your partner first to log shared expenses.'
-                : 'Invite your partner first to log their expenses.';
-            _loading = false;
-          });
-          return;
-        }
-      }
-
       // Resolve the current user's own partner record.
       final me = await ref.read(myPartnerProvider.future);
       if (me == null) throw Exception('Account setup incomplete — please restart the app.');
@@ -228,10 +214,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget build(BuildContext context) {
     final bucketColor = AppColors.forBucket(_bucket);
     final categories  = _isIncome ? _incomeCategories : _expenseCategories;
-    final hasPartner  = ref.watch(partnersProvider).maybeWhen(
-      data: (partners) => partners.length >= 2,
-      orElse: () => false,
-    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -262,7 +244,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     if (!_isIncome) ...[
                       _BucketSelector(
                         selected: _bucket,
-                        hasPartner: hasPartner,
                         onSelect: (b) => setState(() {
                           _bucket = b;
                           if (b != 'mine') _isPrivate = false;
@@ -476,12 +457,10 @@ class _ToggleTab extends StatelessWidget {
 
 class _BucketSelector extends StatelessWidget {
   final String selected;
-  final bool hasPartner;
   final ValueChanged<String> onSelect;
 
   const _BucketSelector({
     required this.selected,
-    required this.hasPartner,
     required this.onSelect,
   });
 
@@ -489,11 +468,10 @@ class _BucketSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: ['mine', 'ours', 'theirs'].map((b) {
-        final isSelected   = b == selected;
-        final needsPartner = b != 'mine' && !hasPartner;
-        final color        = AppColors.forBucket(b);
-        final lightColor   = AppColors.lightForBucket(b);
-        final label        = b[0].toUpperCase() + b.substring(1);
+        final isSelected = b == selected;
+        final color      = AppColors.forBucket(b);
+        final lightColor = AppColors.lightForBucket(b);
+        final label      = b[0].toUpperCase() + b.substring(1);
 
         return Expanded(
           child: Padding(
@@ -535,16 +513,6 @@ class _BucketSelector extends StatelessWidget {
                         color: isSelected ? color : AppColors.textSecondary,
                       ),
                     ),
-                    if (needsPartner) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        'needs partner',
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

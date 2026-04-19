@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../shared/providers/auth_provider.dart';
+import '../../../features/home/providers/home_provider.dart';
+import '../../../features/fair_split/providers/fair_split_provider.dart';
+import '../../../features/goals/providers/goals_provider.dart';
+import '../../../features/spending/providers/spending_provider.dart';
 import '../onboarding_controller.dart';
 
 class JoinScreen extends ConsumerStatefulWidget {
@@ -44,6 +49,24 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
       await OnboardingController.markOnboardingComplete();
       await OnboardingController.markSetupComplete();
+
+      if (mounted) {
+        // Invalidate all household-dependent providers so the home screen
+        // reflects the new household membership immediately
+        ref.invalidate(partnersProvider);
+        ref.invalidate(myPartnerProvider);
+        ref.invalidate(householdProvider);
+        ref.invalidate(bucketTotalsProvider);
+        ref.invalidate(recentTransactionsProvider);
+        ref.invalidate(allTransactionsThisMonthProvider);
+        ref.invalidate(spendingTransactionsProvider);
+        ref.invalidate(goalsProvider);
+        ref.invalidate(goalsNotifierProvider);
+        ref.invalidate(fairSplitResultProvider);
+        ref.invalidate(oursTransactionsProvider);
+        ref.invalidate(settlementHistoryProvider);
+        ref.invalidate(settlementNotifierProvider);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
