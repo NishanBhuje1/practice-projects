@@ -57,9 +57,36 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (partners) {
-        if (partners.length >= 2) return const SizedBox.shrink();
-
         final userId = Supabase.instance.client.auth.currentUser?.id;
+
+        if (partners.length >= 2) {
+          final other = partners.where((p) => p.userId != userId).firstOrNull;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1D9E75).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.favorite, color: Color(0xFF1D9E75), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  other != null
+                      ? 'Connected with ${other.displayName}'
+                      : 'Both partners connected',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1D9E75),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         final me = partners.where((p) => p.userId == userId).firstOrNull;
         final householdId = me?.householdId ?? '';
 
