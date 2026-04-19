@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -427,20 +428,24 @@ class _BottomActions extends StatelessWidget {
           ] else if (currentPage == 1) ...[
             _PrimaryButton(label: 'Continue', onTap: onNext),
           ] else ...[
-            _SocialButton(
-              label: 'Continue with Google',
-              icon: Icons.g_mobiledata_rounded,
-              color: const Color(0xFF4285F4),
-              onTap: onGoogle,
-            ),
-            const SizedBox(height: 10),
-            _SocialButton(
-              label: 'Continue with Apple',
-              icon: Icons.apple,
-              color: Colors.black,
-              onTap: onApple,
-            ),
-            const SizedBox(height: 12),
+            if (!Platform.isIOS) ...[
+              _SocialButton(
+                label: 'Continue with Google',
+                icon: Icons.g_mobiledata_rounded,
+                color: const Color(0xFF4285F4),
+                onTap: onGoogle,
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (Platform.isIOS) ...[
+              _SocialButton(
+                label: 'Continue with Apple',
+                icon: Icons.apple,
+                color: Colors.black,
+                onTap: onApple,
+              ),
+              const SizedBox(height: 10),
+            ],
             _PrimaryButton(label: 'Start Tracking!', onTap: onLogin),
           ],
         ],
