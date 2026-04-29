@@ -105,6 +105,18 @@ class RevenueCatService {
     return Purchases.purchasePackage(package);
   }
 
+  static Future<bool> hasPremiumEntitlement() async {
+    if (!_isConfigured) return false;
+    try {
+      final info = await Purchases.getCustomerInfo();
+      return info.entitlements.active.containsKey(entitlementTogether) ||
+          info.entitlements.active.containsKey(entitlementTogetherPlus);
+    } catch (e) {
+      debugPrint('RevenueCat entitlement check failed: $e');
+      return false;
+    }
+  }
+
   static Future<bool> restorePurchases() async {
     try {
       final info = await Purchases.restorePurchases();

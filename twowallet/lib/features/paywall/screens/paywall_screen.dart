@@ -3,13 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/services/revenue_cat_service.dart';
 import '../../../data/services/analytics_service.dart';
 import '../../../shared/providers/subscription_provider.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
   final bool canDismiss;
-  const PaywallScreen({super.key, this.canDismiss = true});
+  final bool isWinBack;
+
+  const PaywallScreen({
+    super.key,
+    this.canDismiss = true,
+    this.isWinBack = false,
+  });
 
   @override
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
@@ -39,7 +46,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       final offering = await RevenueCatService.getCurrentOffering();
       if (offering == null) {
         setState(() {
-          _error = 'Subscriptions are not available right now. Please try again later.';
+          _error =
+              'Subscriptions are not available right now. Please try again later.';
           _isLoading = false;
         });
         return;
@@ -70,16 +78,19 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     setState(() => _isPurchasing = true);
 
     try {
-      final success = await RevenueCatService.purchasePackage(_selectedPackage!);
+      final success =
+          await RevenueCatService.purchasePackage(_selectedPackage!);
 
       if (success && mounted) {
         await AnalyticsService.subscriptionPurchased(
-          _selectedPackage!.packageType == PackageType.annual ? 'together_yearly' : 'together_monthly',
+          _selectedPackage!.packageType == PackageType.annual
+              ? 'together_yearly'
+              : 'together_monthly',
         );
-        ref.invalidate(subscriptionTierProvider);
+        ref.invalidate(subscriptionStatusProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Welcome to TwoWallet Together!'),
+            content: Text('Welcome to TwoWallet Premium!'),
             backgroundColor: Color(0xFF1D9E75),
           ),
         );
@@ -106,7 +117,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (mounted) {
         if (hasAccess) {
           await AnalyticsService.subscriptionRestored();
-          ref.invalidate(subscriptionTierProvider);
+          ref.invalidate(subscriptionStatusProvider);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Subscription restored!'),
@@ -133,6 +144,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final subAsync = ref.watch(subscriptionStatusProvider);
+    final isOnTrial =
+        subAsync.valueOrNull?.status == 'trial';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -148,7 +163,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 ),
               ),
             SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -162,14 +178,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         color: const Color(0xFF1D9E75),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(Icons.favorite, color: Colors.white, size: 40),
+                      child: const Icon(Icons.favorite,
+                          color: Colors.white, size: 40),
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
                   Text(
-                    'TwoWallet Together',
+                    widget.isWinBack
+                        ? 'Welcome back to TwoWallet'
+                        : 'TwoWallet Premium',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 28,
@@ -181,7 +200,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   const SizedBox(height: 8),
 
                   Text(
-                    'Manage money together, beautifully.',
+                    widget.isWinBack
+                        ? 'Pick up where you left off — subscribe to unlock premium features again.'
+                        : 'Manage money together, beautifully.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 15,
@@ -191,12 +212,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
                   const SizedBox(height: 32),
 
-                  const _FeatureRow(text: 'Track all three buckets: Mine, Ours, Theirs'),
-                  const _FeatureRow(text: 'Auto-calculated fair split based on income'),
                   const _FeatureRow(text: 'Weekly Money Date with AI insights'),
-                  const _FeatureRow(text: 'Shared goals and progress tracking'),
-                  const _FeatureRow(text: 'Private Pocket for surprises'),
-                  const _FeatureRow(text: 'Unlimited transactions'),
+                  const _FeatureRow(
+                      text: 'Auto-calculated fair split based on income'),
+                  const _FeatureRow(
+                      text: 'Unlimited goals with progress tracking'),
+                  const _FeatureRow(
+                      text: 'Private Pocket for surprise spending'),
+                  const _FeatureRow(text: 'Spending analytics & trends'),
+                  const _FeatureRow(text: 'Export your financial data'),
 
                   const SizedBox(height: 32),
 
@@ -204,7 +228,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(32),
-                        child: CircularProgressIndicator(color: Color(0xFF1D9E75)),
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF1D9E75)),
                       ),
                     )
                   else if (_error != null)
@@ -216,12 +241,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade700),
+                          Icon(Icons.error_outline,
+                              color: Colors.red.shade700),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _error!,
-                              style: TextStyle(color: Colors.red.shade900, fontSize: 14),
+                              style: TextStyle(
+                                  color: Colors.red.shade900, fontSize: 14),
                             ),
                           ),
                         ],
@@ -230,8 +257,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   else if (_offering != null)
                     Column(
                       children: _offering!.availablePackages.map((package) {
-                        final isSelected = _selectedPackage?.identifier == package.identifier;
-                        final isAnnual = package.packageType == PackageType.annual;
+                        final isSelected =
+                            _selectedPackage?.identifier == package.identifier;
+                        final isAnnual =
+                            package.packageType == PackageType.annual;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -239,7 +268,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                             package: package,
                             isSelected: isSelected,
                             isBestValue: isAnnual,
-                            onTap: () => setState(() => _selectedPackage = package),
+                            onTap: () =>
+                                setState(() => _selectedPackage = package),
                           ),
                         );
                       }).toList(),
@@ -248,17 +278,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   const SizedBox(height: 24),
 
                   FilledButton(
-                    onPressed: _isPurchasing || _selectedPackage == null ? null : _purchase,
+                    onPressed:
+                        _isPurchasing || _selectedPackage == null ? null : _purchase,
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF1D9E75),
                       minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     child: _isPurchasing
                         ? const SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
                             'Subscribe',
@@ -269,6 +302,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                           ),
                   ),
 
+                  if (isOnTrial) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: _isPurchasing ? null : () => context.pop(),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        side: const BorderSide(color: Color(0xFF1D9E75)),
+                        foregroundColor: const Color(0xFF1D9E75),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Continue with free trial',
+                        style: GoogleFonts.inter(fontSize: 15),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 8),
 
                   TextButton(
@@ -276,9 +327,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     child: Text(
                       'Restore purchases',
                       style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
+                          fontSize: 14, color: Colors.black54),
                     ),
                   ),
 
@@ -288,9 +337,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: Colors.black45,
-                    ),
+                        fontSize: 11, color: Colors.black45),
                   ),
 
                   const SizedBox(height: 8),
@@ -299,22 +346,33 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => launchUrl(
+                          Uri.parse('https://twowallet.app/privacy'),
+                          mode: LaunchMode.externalApplication,
+                        ),
                         child: Text(
                           'Privacy Policy',
-                          style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                          style: GoogleFonts.inter(
+                              fontSize: 11, color: Colors.black54),
                         ),
                       ),
-                      const Text('·', style: TextStyle(color: Colors.black45)),
+                      const Text('·',
+                          style: TextStyle(color: Colors.black45)),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => launchUrl(
+                          Uri.parse('https://twowallet.app/terms'),
+                          mode: LaunchMode.externalApplication,
+                        ),
                         child: Text(
                           'Terms of Service',
-                          style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                          style: GoogleFonts.inter(
+                              fontSize: 11, color: Colors.black54),
                         ),
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -348,10 +406,7 @@ class _FeatureRow extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
             ),
           ),
         ],
@@ -376,7 +431,8 @@ class _PackageOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final price = package.storeProduct.priceString;
-    final period = package.packageType == PackageType.annual ? 'year' : 'month';
+    final period =
+        package.packageType == PackageType.annual ? 'year' : 'month';
 
     return GestureDetector(
       onTap: onTap,
@@ -384,10 +440,13 @@ class _PackageOption extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1D9E75).withOpacity(0.05) : Colors.white,
+          color: isSelected
+              ? const Color(0xFF1D9E75).withOpacity(0.05)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF1D9E75) : Colors.grey.shade200,
+            color:
+                isSelected ? const Color(0xFF1D9E75) : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -399,10 +458,13 @@ class _PackageOption extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF1D9E75) : Colors.grey.shade400,
+                  color: isSelected
+                      ? const Color(0xFF1D9E75)
+                      : Colors.grey.shade400,
                   width: 2,
                 ),
-                color: isSelected ? const Color(0xFF1D9E75) : Colors.transparent,
+                color:
+                    isSelected ? const Color(0xFF1D9E75) : Colors.transparent,
               ),
               child: isSelected
                   ? const Icon(Icons.check, color: Colors.white, size: 16)
@@ -416,7 +478,9 @@ class _PackageOption extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        package.packageType == PackageType.annual ? 'Yearly' : 'Monthly',
+                        package.packageType == PackageType.annual
+                            ? 'Yearly'
+                            : 'Monthly',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -425,7 +489,8 @@ class _PackageOption extends StatelessWidget {
                       if (isBestValue) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFF1D9E75),
                             borderRadius: BorderRadius.circular(6),
@@ -446,9 +511,7 @@ class _PackageOption extends StatelessWidget {
                   Text(
                     '$price / $period',
                     style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                        fontSize: 14, color: Colors.black54),
                   ),
                 ],
               ),

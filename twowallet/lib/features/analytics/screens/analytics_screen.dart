@@ -1,9 +1,11 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../providers/analytics_provider.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
@@ -11,6 +13,86 @@ class AnalyticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final subAsync = ref.watch(subscriptionStatusProvider);
+    return subAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: Color(0xFFF8F9FA),
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => _buildContent(context, ref),
+      data: (sub) =>
+          sub.hasAccess ? _buildContent(context, ref) : _buildLocked(context),
+    );
+  }
+
+  Widget _buildLocked(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Analytics',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.oursLight,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.bar_chart_rounded,
+                    color: AppColors.ours, size: 36),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Analytics is a Premium feature',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'See monthly trends, spending by bucket, top categories, and month-over-month comparisons.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: Colors.grey.shade500, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: () => context.push('/paywall'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.ours,
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('See Plans'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: RefreshIndicator(

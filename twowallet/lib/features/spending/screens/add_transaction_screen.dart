@@ -12,7 +12,6 @@ import '../../fair_split/providers/income_provider.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/spending_provider.dart';
 import '../../analytics/providers/analytics_provider.dart';
-import '../../../shared/providers/subscription_provider.dart';
 import '../../../data/services/analytics_service.dart';
 
 // ════════════════════════════════════════════════════════════════════════════

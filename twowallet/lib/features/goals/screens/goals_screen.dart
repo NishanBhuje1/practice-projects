@@ -7,7 +7,7 @@ import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/goal.dart';
 import '../providers/goals_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
-import '../../../shared/providers/subscription_provider.dart';
+import '../../../core/utils/premium_gate.dart';
 import '../../../data/services/analytics_service.dart';
 
 class GoalsScreen extends ConsumerWidget {
@@ -16,15 +16,6 @@ class GoalsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goalsAsync = ref.watch(goalsProvider);
-    final isFreeAsync = ref.watch(isFreeProvider);
-
-    final canCreate = goalsAsync.maybeWhen(
-      data: (goals) => isFreeAsync.maybeWhen(
-        data: (isFree) => !isFree || goals.length < 3,
-        orElse: () => true,
-      ),
-      orElse: () => true,
-    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,9 +35,16 @@ class GoalsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: GestureDetector(
-              onTap: () => canCreate
-                  ? _showCreateGoalSheet(context, ref)
-                  : context.push('/paywall'),
+              onTap: () async {
+                final allowed = await requirePremium(
+                  context,
+                  ref,
+                  featureName: 'Goals',
+                );
+                if (allowed && context.mounted) {
+                  _showCreateGoalSheet(context, ref);
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -113,9 +111,16 @@ class GoalsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 32),
                     GestureDetector(
-                      onTap: () => canCreate
-                          ? _showCreateGoalSheet(context, ref)
-                          : context.push('/paywall'),
+                      onTap: () async {
+                        final allowed = await requirePremium(
+                          context,
+                          ref,
+                          featureName: 'Goals',
+                        );
+                        if (allowed && context.mounted) {
+                          _showCreateGoalSheet(context, ref);
+                        }
+                      },
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 16),

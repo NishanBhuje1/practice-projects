@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/models/partner.dart';
+import '../../../data/services/notification_service.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../providers/home_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
@@ -48,9 +51,10 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  const _WinBackCheck(),
                   _PausedBanner(),
                   const InvitePartnerCard(),
-                  _UpgradeBanner(),
+                  _TrialBanner(),
                   _BucketCards(),
                   const SizedBox(height: 24),
                   _QuickActionsRow(),
@@ -108,15 +112,6 @@ class _GreetingHeader extends ConsumerWidget {
                 ),
                 itemBuilder: (_) => [
                   const PopupMenuItem<String>(
-                    value: 'upgrade',
-                    child: Row(children: [
-                      Icon(Icons.star_outline, size: 18),
-                      SizedBox(width: 10),
-                      Text('Upgrade to Together'),
-                    ]),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<String>(
                     value: 'settings',
                     child: Row(children: [
                       Icon(Icons.settings_outlined, size: 18),
@@ -151,8 +146,7 @@ class _GreetingHeader extends ConsumerWidget {
                   ),
                 ],
                 onSelected: (value) async {
-                  if (value == 'upgrade') context.push('/paywall');
-                  else if (value == 'settings') context.push('/settings');
+                  if (value == 'settings') context.push('/settings');
                   else if (value == 'notifications') context.push('/notification-settings');
                   else if (value == 'relationship') context.push('/relationship-status');
                   else if (value == 'signout') {
@@ -822,53 +816,115 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-// ── Upgrade banner ────────────────────────────────────────────────────────────
+// ── Trial countdown banner ─────────────────────────────────────────────────────
 
-class _UpgradeBanner extends ConsumerWidget {
+class _TrialBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(householdProvider).when(
+    return ref.watch(subscriptionStatusProvider).when(
       loading: () => const SizedBox.shrink(),
-      error:   (_, __) => const SizedBox.shrink(),
-      data: (household) {
-        if (household == null || household.subscriptionTier != 'free') {
-          return const SizedBox.shrink();
-        }
-        return GestureDetector(
-          onTap: () => context.push('/paywall'),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.mine, AppColors.ours],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (sub) {
+        if (sub.isGrandfathered) return const SizedBox.shrink();
+        if (sub.status != 'trial') return const SizedBox.shrink();
+        if (sub.daysRemaining > 7) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1D9E75), Color(0xFF158A65)],
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.star_outline_rounded, color: Colors.white, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Try Together free for 30 days',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.access_time, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${sub.daysRemaining} ${sub.daysRemaining == 1 ? "day" : "days"} left in trial',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
+                    const Text(
+                      'Subscribe to keep premium features',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.push('/paywall'),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text(
+                  'Upgrade',
+                  style: TextStyle(
+                    color: Color(0xFF1D9E75),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white, size: 18),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
+}
+
+// ── Win-back check (invisible, fires once on home mount) ──────────────────────
+
+class _WinBackCheck extends ConsumerStatefulWidget {
+  const _WinBackCheck();
+
+  @override
+  ConsumerState<_WinBackCheck> createState() => _WinBackCheckState();
+}
+
+class _WinBackCheckState extends ConsumerState<_WinBackCheck> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _run());
+  }
+
+  Future<void> _run() async {
+    if (!mounted) return;
+    try {
+      final sub = await ref.read(subscriptionStatusProvider.future);
+
+      // Schedule trial notifications on every fresh home load.
+      await NotificationService.scheduleTrialNotifications(sub);
+
+      if (sub.status != 'expired') return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastShown = prefs.getString('winback_last_shown');
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      if (lastShown == today) return;
+
+      await prefs.setString('winback_last_shown', today);
+      if (mounted) context.push('/paywall?winback=true');
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 // ── Fair split banner ─────────────────────────────────────────────────────────

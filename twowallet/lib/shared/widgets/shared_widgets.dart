@@ -129,7 +129,7 @@ class UpgradeGateCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Upgrade to Together to unlock $feature',
+              'Subscribe to unlock $feature',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: const Color(0xFF085041),

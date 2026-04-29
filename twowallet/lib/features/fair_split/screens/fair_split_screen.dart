@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
@@ -12,6 +13,7 @@ import '../../../data/models/partner.dart';
 import '../providers/fair_split_provider.dart';
 import '../providers/income_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 import '../../../data/repositories/household_repository.dart';
 import '../../../data/services/analytics_service.dart';
 
@@ -79,76 +81,112 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
               validIncomes.fold<double>(0, (s, i) => s + i.monthlyIncome);
           final bothHaveIncome = validIncomes.length >= 2;
 
+          final subAsync = ref.watch(subscriptionStatusProvider);
+          final hasPremium = subAsync.valueOrNull?.hasAccess ?? true;
+
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
             children: [
-              // ── Info banner ───────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline,
-                        color: Colors.blue.shade700, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Income is auto-calculated from your income transactions over the last 3 months. Add income via the + button in the Spending tab.',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: Colors.blue.shade900,
-                          height: 1.4,
+              // ── Income section (premium: auto-calculated; free: manual only) ──
+              if (hasPremium) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline,
+                          color: Colors.blue.shade700, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Income is auto-calculated from your income transactions over the last 3 months. Add income via the + button in the Spending tab.',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.blue.shade900,
+                            height: 1.4,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
-              // ── Income cards ──────────────────────────────────────────
-              if (incomesAsync.isLoading)
-                const SizedBox(
-                  height: 88,
-                  child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              else if (incomes.length >= 2)
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PartnerIncomeCard(
-                        name: incomes[0].displayName,
-                        amount: incomes[0].monthlyIncome,
-                        sharePercent: totalIncome > 0
-                            ? incomes[0].monthlyIncome / totalIncome * 100
-                            : 50,
-                        source: incomes[0].source,
-                        monthsOfData: incomes[0].monthsOfData,
+                if (incomesAsync.isLoading)
+                  const SizedBox(
+                    height: 88,
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                else if (incomes.length >= 2)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PartnerIncomeCard(
+                          name: incomes[0].displayName,
+                          amount: incomes[0].monthlyIncome,
+                          sharePercent: totalIncome > 0
+                              ? incomes[0].monthlyIncome / totalIncome * 100
+                              : 50,
+                          source: incomes[0].source,
+                          monthsOfData: incomes[0].monthsOfData,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PartnerIncomeCard(
-                        name: incomes[1].displayName,
-                        amount: incomes[1].monthlyIncome,
-                        sharePercent: totalIncome > 0
-                            ? incomes[1].monthlyIncome / totalIncome * 100
-                            : 50,
-                        source: incomes[1].source,
-                        monthsOfData: incomes[1].monthsOfData,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _PartnerIncomeCard(
+                          name: incomes[1].displayName,
+                          amount: incomes[1].monthlyIncome,
+                          sharePercent: totalIncome > 0
+                              ? incomes[1].monthlyIncome / totalIncome * 100
+                              : 50,
+                          source: incomes[1].source,
+                          monthsOfData: incomes[1].monthsOfData,
+                        ),
                       ),
+                    ],
+                  ),
+              ] else ...[
+                GestureDetector(
+                  onTap: () => context.push('/paywall'),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.oursLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.ours.withOpacity(0.3)),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        const Icon(Icons.auto_awesome,
+                            color: AppColors.ours, size: 18),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Upgrade for auto income calculation',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.oursDark,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right,
+                            color: AppColors.ours, size: 18),
+                      ],
+                    ),
+                  ),
                 ),
+              ],
               const SizedBox(height: 16),
 
               // ── Fair split calculation or prompt ──────────────────────
-              if (!incomesAsync.isLoading && bothHaveIncome) ...[
+              if (!incomesAsync.isLoading && bothHaveIncome && hasPremium) ...[
                 resultAsync.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -183,7 +221,13 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
                     );
                   },
                 ),
-              ] else if (!incomesAsync.isLoading) ...[
+              ] else if (!incomesAsync.isLoading && hasPremium) ...[
+                _IncomeSetupPrompt(
+                  incomes: incomes,
+                  onSetManual: () => _showIncomeSetupSheet(context, ref),
+                ),
+                const SizedBox(height: 16),
+              ] else if (!hasPremium) ...[
                 _IncomeSetupPrompt(
                   incomes: incomes,
                   onSetManual: () => _showIncomeSetupSheet(context, ref),

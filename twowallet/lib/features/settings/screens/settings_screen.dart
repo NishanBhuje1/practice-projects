@@ -1,12 +1,15 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../fair_split/providers/fair_split_provider.dart';
+import '../../../core/utils/premium_gate.dart';
+import '../../../data/services/revenue_cat_service.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
+import '../../fair_split/providers/fair_split_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -23,14 +26,14 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
-          _UpgradeSettingsTile(),
+          _SubscriptionTile(),
           _SectionHeader(title: 'Profile'),
           Container(
             color: Colors.white,
             child: ListTile(
               leading: const Icon(Icons.person_outline),
-              title: Text('Display name',
-                  style: GoogleFonts.inter(fontSize: 14)),
+              title:
+                  Text('Display name', style: GoogleFonts.inter(fontSize: 14)),
               subtitle: Text('How your partner sees you',
                   style: GoogleFonts.inter(
                       fontSize: 12, color: Colors.grey.shade500)),
@@ -49,7 +52,16 @@ class SettingsScreen extends ConsumerWidget {
                   style: GoogleFonts.inter(
                       fontSize: 12, color: Colors.grey.shade500)),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showPocketEditor(context, ref),
+              onTap: () async {
+                final allowed = await requirePremium(
+                  context,
+                  ref,
+                  featureName: 'Private Pocket',
+                );
+                if (allowed && context.mounted) {
+                  _showPocketEditor(context, ref);
+                }
+              },
             ),
           ),
           _SectionHeader(title: 'Schedule'),
@@ -83,17 +95,62 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(title: 'Account'),
           Container(
             color: Colors.white,
-            child: ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: Text('Delete account',
-                  style: GoogleFonts.inter(fontSize: 14, color: Colors.red)),
-              subtitle: Text('Permanently delete your account and all data',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Colors.grey.shade500)),
-              onTap: () => launchUrl(
-                Uri.parse('https://twowallet.app/delete-account'),
-                mode: LaunchMode.externalApplication,
-              ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading:
+                      const Icon(Icons.file_download_outlined),
+                  title: Text('Export data',
+                      style: GoogleFonts.inter(fontSize: 14)),
+                  subtitle: Text('Download your transactions as CSV',
+                      style: GoogleFonts.inter(
+                          fontSize: 12, color: Colors.grey.shade500)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final allowed = await requirePremium(
+                      context,
+                      ref,
+                      featureName: 'Export Data',
+                    );
+                    if (allowed && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Export coming soon')),
+                      );
+                    }
+                  },
+                ),
+                Divider(
+                    height: 1, indent: 56, color: Colors.grey.shade100),
+                ListTile(
+                  leading: const Icon(Icons.restore),
+                  title: Text('Restore purchases',
+                      style: GoogleFonts.inter(fontSize: 14)),
+                  subtitle: Text(
+                      'Reconnect an existing subscription',
+                      style: GoogleFonts.inter(
+                          fontSize: 12, color: Colors.grey.shade500)),
+                  onTap: () => _restorePurchases(context, ref),
+                ),
+                _ManageSubscriptionTile(),
+                Divider(
+                    height: 1, indent: 56, color: Colors.grey.shade100),
+                ListTile(
+                  leading:
+                      const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text('Delete account',
+                      style:
+                          GoogleFonts.inter(fontSize: 14, color: Colors.red)),
+                  subtitle: Text(
+                      'Permanently delete your account and all data',
+                      style: GoogleFonts.inter(
+                          fontSize: 12, color: Colors.grey.shade500)),
+                  onTap: () => launchUrl(
+                    Uri.parse('https://twowallet.app/delete-account'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -101,7 +158,33 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showDisplayNameEditor(BuildContext context, WidgetRef ref) async {
+  Future<void> _restorePurchases(
+      BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    try {
+      final restored = await RevenueCatService.restorePurchases();
+      if (restored) {
+        ref.invalidate(subscriptionStatusProvider);
+        scaffold.showSnackBar(
+          const SnackBar(
+            content: Text('Subscription restored!'),
+            backgroundColor: Color(0xFF1D9E75),
+          ),
+        );
+      } else {
+        scaffold.showSnackBar(
+          const SnackBar(
+              content: Text('No active subscription found to restore.')),
+        );
+      }
+    } catch (_) {
+      scaffold
+          .showSnackBar(const SnackBar(content: Text('Restore failed.')));
+    }
+  }
+
+  Future<void> _showDisplayNameEditor(
+      BuildContext context, WidgetRef ref) async {
     final partners = await ref.read(partnersProvider.future);
     final userId = ref.read(authUserProvider).value?.id;
     final me = partners.where((p) => p.userId == userId).firstOrNull;
@@ -124,7 +207,9 @@ class SettingsScreen extends ConsumerWidget {
           builder: (innerCtx, setSheetState) {
             return Padding(
               padding: EdgeInsets.fromLTRB(
-                24, 24, 24,
+                24,
+                24,
+                24,
                 MediaQuery.of(innerCtx).viewInsets.bottom + 24,
               ),
               child: Column(
@@ -153,7 +238,8 @@ class SettingsScreen extends ConsumerWidget {
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
+                        borderSide:
+                            BorderSide(color: Colors.grey.shade200),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -178,7 +264,9 @@ class SettingsScreen extends ConsumerWidget {
                                     .updateDisplayName(me.id, name);
                                 ref.invalidate(partnersProvider);
                                 ref.invalidate(myPartnerProvider);
-                                if (innerCtx.mounted) Navigator.pop(innerCtx);
+                                if (innerCtx.mounted) {
+                                  Navigator.pop(innerCtx);
+                                }
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -193,7 +281,8 @@ class SettingsScreen extends ConsumerWidget {
                             },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.ours,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -208,7 +297,8 @@ class SettingsScreen extends ConsumerWidget {
                           : Text(
                               'Save',
                               style: GoogleFonts.inter(
-                                  fontSize: 15, fontWeight: FontWeight.w600),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600),
                             ),
                     ),
                   ),
@@ -221,8 +311,10 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showPocketEditor(BuildContext context, WidgetRef ref) async {
-    final household = await ref.read(householdRepoProvider).fetchMyHousehold();
+  Future<void> _showPocketEditor(
+      BuildContext context, WidgetRef ref) async {
+    final household =
+        await ref.read(householdRepoProvider).fetchMyHousehold();
     if (household == null || !context.mounted) return;
 
     final partners = await ref.read(partnersProvider.future);
@@ -231,9 +323,8 @@ class SettingsScreen extends ConsumerWidget {
     if (me == null || !context.mounted) return;
 
     final isPartnerA = me.role == 'partner_a';
-    final currentAmount = isPartnerA
-        ? household.privatePocketAAud
-        : household.privatePocketBAud;
+    final currentAmount =
+        isPartnerA ? household.privatePocketAAud : household.privatePocketBAud;
 
     final controller =
         TextEditingController(text: currentAmount.toStringAsFixed(0));
@@ -277,8 +368,8 @@ class SettingsScreen extends ConsumerWidget {
                   TextField(
                     controller: controller,
                     autofocus: true,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
                     decoration: InputDecoration(
                       labelText: 'Monthly allowance',
                       prefixText: '\$ ',
@@ -323,8 +414,7 @@ class SettingsScreen extends ConsumerWidget {
                                   Navigator.pop(innerCtx);
                                 }
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content:
                                           const Text('Allowance updated'),
@@ -369,48 +459,173 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _UpgradeSettingsTile extends ConsumerWidget {
+// ── Subscription tile (top of settings list) ─────────────────────────────────
+
+class _SubscriptionTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(subscriptionTierProvider).when(
+    return ref.watch(subscriptionStatusProvider).when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
-      data: (tier) {
-        if (tier != 'free') return const SizedBox.shrink();
-        return GestureDetector(
-          onTap: () => context.push('/paywall'),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(0, 12, 0, 4),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.mine, AppColors.ours],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.star_outline_rounded, color: Colors.white),
-              title: Text(
-                'Upgrade to Together',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              subtitle: Text(
-                'Unlock all features for both partners',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
-              ),
-              trailing: const Icon(Icons.chevron_right, color: Colors.white),
+      data: (sub) {
+        if (sub.isGrandfathered) return const SizedBox.shrink();
+
+        if (sub.status == 'active') {
+          return _PremiumStatusTile(sub: sub);
+        }
+
+        return _UpgradePromptTile(sub: sub);
+      },
+    );
+  }
+}
+
+class _UpgradePromptTile extends StatelessWidget {
+  final SubscriptionStatus sub;
+  const _UpgradePromptTile({required this.sub});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = sub.status == 'trial'
+        ? '${sub.daysRemaining} ${sub.daysRemaining == 1 ? "day" : "days"} left in trial'
+        : 'Trial ended — Subscribe';
+
+    return GestureDetector(
+      onTap: () => context.push('/paywall'),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1D9E75), Color(0xFF158A65)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: ListTile(
+          leading: const Icon(Icons.star_outline_rounded,
+              color: Colors.white),
+          title: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
           ),
+          subtitle: Text(
+            sub.status == 'trial'
+                ? 'Subscribe to keep all premium features'
+                : 'Unlock Money Date, Goals, Analytics and more',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+          ),
+          trailing:
+              const Icon(Icons.chevron_right, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumStatusTile extends StatelessWidget {
+  final SubscriptionStatus sub;
+  const _PremiumStatusTile({required this.sub});
+
+  @override
+  Widget build(BuildContext context) {
+    final manageUrl = Platform.isIOS
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF1D9E75).withOpacity(0.3)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1D9E75).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.star_rounded,
+              color: Color(0xFF1D9E75), size: 20),
+        ),
+        title: Text(
+          'TwoWallet Premium',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1D9E75),
+          ),
+        ),
+        subtitle: Text(
+          'Active',
+          style: GoogleFonts.inter(
+              fontSize: 12, color: Colors.grey.shade500),
+        ),
+        trailing: TextButton(
+          onPressed: () => launchUrl(
+            Uri.parse(manageUrl),
+            mode: LaunchMode.externalApplication,
+          ),
+          child: Text(
+            'Manage',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: const Color(0xFF1D9E75),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Manage subscription tile (account section, active subs only) ──────────────
+
+class _ManageSubscriptionTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(subscriptionStatusProvider).when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (sub) {
+        if (sub.status != 'active') return const SizedBox.shrink();
+
+        final manageUrl = Platform.isIOS
+            ? 'https://apps.apple.com/account/subscriptions'
+            : 'https://play.google.com/store/account/subscriptions';
+
+        return Column(
+          children: [
+            Divider(height: 1, indent: 56, color: Colors.grey.shade100),
+            ListTile(
+              leading: const Icon(Icons.manage_accounts_outlined),
+              title: Text('Manage subscription',
+                  style: GoogleFonts.inter(fontSize: 14)),
+              subtitle: Text('View, change, or cancel your plan',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => launchUrl(
+                Uri.parse(manageUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
         );
       },
     );
   }
 }
+
+// ── Section header ────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final String title;

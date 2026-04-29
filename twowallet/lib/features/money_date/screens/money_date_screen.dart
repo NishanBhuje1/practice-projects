@@ -6,11 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
+import '../../../core/utils/premium_gate.dart';
 import '../providers/money_date_provider.dart';
 import '../../../data/services/claude_service.dart';
 import '../../../data/services/analytics_service.dart';
 import '../../../shared/providers/auth_provider.dart';
-import '../../../shared/providers/subscription_provider.dart';
 
 String _isoWeekKey(DateTime date) {
   final thursday = date.subtract(Duration(days: date.weekday - 4));
@@ -27,10 +27,27 @@ class MoneyDateScreen extends ConsumerStatefulWidget {
 }
 
 class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
+  bool _premiumChecked = false;
+
   @override
   void initState() {
     super.initState();
     AnalyticsService.moneyDateOpened();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPremiumAccess());
+  }
+
+  Future<void> _checkPremiumAccess() async {
+    if (!mounted || _premiumChecked) return;
+    _premiumChecked = true;
+    final allowed =
+        await requirePremium(context, ref, featureName: 'Money Date');
+    if (!allowed && mounted) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go('/home');
+      }
+    }
   }
 
   @override
@@ -339,8 +356,6 @@ class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
 
   @override
   Widget build(BuildContext context) {
-    final isFreeAsync = ref.watch(isFreeProvider);
-
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -371,119 +386,66 @@ class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
               ],
             ),
             const SizedBox(height: 12),
-            isFreeAsync.when(
-              loading: () => const CircularProgressIndicator(),
-              error: (_, __) => _buildTalkingPointsList(context, false),
-              data: (isFree) => _buildTalkingPointsList(context, isFree),
+            Column(
+              children: widget.insights.talkingPoints.asMap().entries.map((e) {
+                final i = e.key;
+                final point = e.value;
+                final checked = _checked.contains(i);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
+                    onTap: () => setState(() {
+                      if (checked) {
+                        _checked.remove(i);
+                      } else {
+                        _checked.add(i);
+                      }
+                    }),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          margin: const EdgeInsets.only(top: 1),
+                          decoration: BoxDecoration(
+                            color:
+                                checked ? AppColors.ours : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: checked
+                                  ? AppColors.ours
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: checked
+                              ? const Icon(Icons.check,
+                                  size: 14, color: Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            point,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: checked
+                                  ? Colors.grey.shade400
+                                  : Colors.black87,
+                              decoration: checked
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTalkingPointsList(BuildContext context, bool isFree) {
-    final points = widget.insights.talkingPoints;
-    final displayCount = isFree ? 1 : points.length;
-
-    return Column(
-      children: [
-        ...points.asMap().entries.map((e) {
-          final i = e.key;
-          final point = e.value;
-          final checked = _checked.contains(i);
-          final isLocked = isFree && i >= 1;
-
-          if (isLocked) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _LockedCard(
-                onTap: () => context.push('/paywall'),
-              ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: GestureDetector(
-              onTap: () => setState(() {
-                if (checked) {
-                  _checked.remove(i);
-                } else {
-                  _checked.add(i);
-                }
-              }),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    margin: const EdgeInsets.only(top: 1),
-                    decoration: BoxDecoration(
-                      color: checked ? AppColors.ours : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: checked ? AppColors.ours : Colors.grey.shade300,
-                      ),
-                    ),
-                    child: checked
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      point,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: checked ? Colors.grey.shade400 : Colors.black87,
-                        decoration: checked ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-}
-
-class _LockedCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _LockedCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE1F5EE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.ours),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.lock_outline, color: AppColors.ours, size: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Upgrade to Together to unlock',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
-          ),
-          TextButton(
-            onPressed: onTap,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: const Size(0, 0),
-            ),
-            child: Text('Upgrade', style: TextStyle(color: AppColors.ours)),
-          ),
-        ],
       ),
     );
   }
