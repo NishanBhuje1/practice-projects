@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../fair_split/providers/fair_split_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/providers/subscription_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -22,6 +23,21 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          _UpgradeSettingsTile(),
+          _SectionHeader(title: 'Profile'),
+          Container(
+            color: Colors.white,
+            child: ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text('Display name',
+                  style: GoogleFonts.inter(fontSize: 14)),
+              subtitle: Text('How your partner sees you',
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: Colors.grey.shade500)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showDisplayNameEditor(context, ref),
+            ),
+          ),
           _SectionHeader(title: 'Privacy'),
           Container(
             color: Colors.white,
@@ -82,6 +98,126 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showDisplayNameEditor(BuildContext context, WidgetRef ref) async {
+    final partners = await ref.read(partnersProvider.future);
+    final userId = ref.read(authUserProvider).value?.id;
+    final me = partners.where((p) => p.userId == userId).firstOrNull;
+    if (me == null || !context.mounted) return;
+
+    final controller = TextEditingController(text: me.displayName);
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        bool loading = false;
+        return StatefulBuilder(
+          builder: (innerCtx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                24, 24, 24,
+                MediaQuery.of(innerCtx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Display name',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'This is how your partner sees you in the app',
+                    style: GoogleFonts.inter(
+                        fontSize: 13, color: Colors.grey.shade500),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Your name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF1D9E75), width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: loading
+                          ? null
+                          : () async {
+                              final name = controller.text.trim();
+                              if (name.isEmpty) return;
+                              setSheetState(() => loading = true);
+                              try {
+                                await ref
+                                    .read(householdRepoProvider)
+                                    .updateDisplayName(me.id, name);
+                                ref.invalidate(partnersProvider);
+                                ref.invalidate(myPartnerProvider);
+                                if (innerCtx.mounted) Navigator.pop(innerCtx);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Name updated'),
+                                      backgroundColor: AppColors.ours,
+                                    ),
+                                  );
+                                }
+                              } catch (_) {
+                                setSheetState(() => loading = false);
+                              }
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.ours,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            )
+                          : Text(
+                              'Save',
+                              style: GoogleFonts.inter(
+                                  fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -227,6 +363,49 @@ class SettingsScreen extends ConsumerWidget {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _UpgradeSettingsTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(subscriptionTierProvider).when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (tier) {
+        if (tier != 'free') return const SizedBox.shrink();
+        return GestureDetector(
+          onTap: () => context.push('/paywall'),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.mine, AppColors.ours],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.star_outline_rounded, color: Colors.white),
+              title: Text(
+                'Upgrade to Together',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              subtitle: Text(
+                'Unlock all features for both partners',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white),
+            ),
+          ),
         );
       },
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/auth_error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../features/home/providers/home_provider.dart';
 import '../../../features/fair_split/providers/fair_split_provider.dart';
@@ -77,10 +78,36 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         );
         context.go('/home');
       }
+    } on PostgrestException catch (e) {
+      String friendlyMessage;
+      if (e.message.contains('Already in this household')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("You're already in this household!"),
+              backgroundColor: Color(0xFF1D9E75),
+            ),
+          );
+          context.go('/home');
+        }
+        return;
+      } else if (e.message.contains('Household already has 2 partners')) {
+        friendlyMessage = 'This household already has 2 partners.';
+      } else if (e.message.contains('Household not found')) {
+        friendlyMessage = 'Invalid invite link.';
+      } else {
+        friendlyMessage = friendlyAuthError(e);
+      }
+      if (mounted) {
+        setState(() {
+          _error = friendlyMessage;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceAll('PostgrestException: ', '');
+          _error = 'Something went wrong. Please try again.';
           _loading = false;
         });
       }

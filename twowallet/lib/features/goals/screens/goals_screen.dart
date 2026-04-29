@@ -488,6 +488,7 @@ class _EditGoalSheetState extends ConsumerState<_EditGoalSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   late String _selectedEmoji;
+  DateTime? _targetDate;
   bool _loading = false;
 
   final _emojis = ['🎯', '✈️', '🏠', '🚗', '💍', '👶', '🛡️', '🏦', '🎓', '💰'];
@@ -499,6 +500,9 @@ class _EditGoalSheetState extends ConsumerState<_EditGoalSheet> {
     _amountController = TextEditingController(
         text: widget.goal.targetAmountAud.toStringAsFixed(0));
     _selectedEmoji = widget.goal.emoji ?? '🎯';
+    if (widget.goal.targetDate != null) {
+      _targetDate = DateTime.tryParse(widget.goal.targetDate!);
+    }
   }
 
   @override
@@ -519,7 +523,9 @@ class _EditGoalSheetState extends ConsumerState<_EditGoalSheet> {
       name: _nameController.text.trim(),
       targetAmountAud: amount,
       emoji: _selectedEmoji,
-      targetDate: widget.goal.targetDate,
+      targetDate: _targetDate != null
+          ? _targetDate!.toIso8601String().split('T')[0]
+          : null,
     );
     if (mounted) Navigator.pop(context);
   }
@@ -591,6 +597,52 @@ class _EditGoalSheetState extends ConsumerState<_EditGoalSheet> {
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+
+          // Deadline picker
+          GestureDetector(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _targetDate ?? DateTime.now().add(const Duration(days: 30)),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+              );
+              if (picked != null) setState(() => _targetDate = picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined,
+                      size: 18, color: Colors.grey.shade600),
+                  const SizedBox(width: 10),
+                  Text(
+                    _targetDate != null
+                        ? '${_targetDate!.day}/${_targetDate!.month}/${_targetDate!.year}'
+                        : 'Deadline (optional)',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: _targetDate != null
+                          ? Colors.black87
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_targetDate != null)
+                    GestureDetector(
+                      onTap: () => setState(() => _targetDate = null),
+                      child: Icon(Icons.close,
+                          size: 18, color: Colors.grey.shade400),
+                    ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -715,6 +767,7 @@ class _CreateGoalSheetState extends ConsumerState<_CreateGoalSheet> {
   final _amountController = TextEditingController();
   String _selectedEmoji = '🎯';
   String _splitMethod = 'fifty_fifty';
+  DateTime? _targetDate;
   bool _loading = false;
 
   final _emojis = ['🎯', '✈️', '🏠', '🚗', '💍', '👶', '🛡️', '🏦', '🎓', '💰'];
@@ -738,6 +791,9 @@ class _CreateGoalSheetState extends ConsumerState<_CreateGoalSheet> {
       emoji: _selectedEmoji,
       contributionSplit: _splitMethod,
       contributionRatioA: _splitMethod == 'fifty_fifty' ? 0.5 : 0.55,
+      targetDate: _targetDate != null
+          ? _targetDate!.toIso8601String().split('T')[0]
+          : null,
     );
     await AnalyticsService.goalCreated();
     if (mounted) Navigator.pop(context);
@@ -831,6 +887,52 @@ class _CreateGoalSheetState extends ConsumerState<_CreateGoalSheet> {
                   value: 'custom', child: Text('Custom')),
             ],
             onChanged: (v) => setState(() => _splitMethod = v!),
+          ),
+          const SizedBox(height: 12),
+
+          // Deadline picker
+          GestureDetector(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _targetDate ?? DateTime.now().add(const Duration(days: 30)),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+              );
+              if (picked != null) setState(() => _targetDate = picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined,
+                      size: 18, color: Colors.grey.shade600),
+                  const SizedBox(width: 10),
+                  Text(
+                    _targetDate != null
+                        ? '${_targetDate!.day}/${_targetDate!.month}/${_targetDate!.year}'
+                        : 'Deadline (optional)',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: _targetDate != null
+                          ? Colors.black87
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_targetDate != null)
+                    GestureDetector(
+                      onTap: () => setState(() => _targetDate = null),
+                      child: Icon(Icons.close,
+                          size: 18, color: Colors.grey.shade400),
+                    ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
 

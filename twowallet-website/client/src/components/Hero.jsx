@@ -95,8 +95,7 @@ export default function Hero() {
         {/* Phone mockup */}
         <div className="fade-in fade-in-delay-2 flex-shrink-0 relative">
           <div className="relative w-64 h-[520px] bg-gray-900 rounded-[2.5rem] shadow-2xl p-1.5 ring-2 ring-gray-800">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-gray-900 rounded-b-xl z-10" />
-            <div className="w-full h-full rounded-[2.2rem] overflow-hidden bg-black">
+<div className="w-full h-full rounded-[2.2rem] overflow-hidden bg-black">
               <img
                 src={twowalletImg}
                 alt="App UI"

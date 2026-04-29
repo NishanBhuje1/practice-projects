@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:twowallet/core/utils/auth_error_messages.dart';
 import 'package:twowallet/shared/providers/auth_provider.dart';
 import 'onboarding_controller.dart';
 
@@ -53,7 +54,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google sign in failed: $e')),
+          SnackBar(content: Text(friendlyAuthError(e))),
         );
       }
     }
@@ -69,7 +70,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Apple sign in failed: $e')),
+          SnackBar(content: Text(friendlyAuthError(e))),
         );
       }
     } finally {

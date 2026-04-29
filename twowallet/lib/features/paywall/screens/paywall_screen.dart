@@ -1,288 +1,323 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../data/services/revenue_cat_service.dart';
 import '../../../data/services/analytics_service.dart';
-
-final packagesProvider = FutureProvider<List<Package>>((ref) {
-  return RevenueCatService.getPackages();
-});
+import '../../../shared/providers/subscription_provider.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
-  const PaywallScreen({super.key});
+  final bool canDismiss;
+  const PaywallScreen({super.key, this.canDismiss = true});
 
   @override
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
-  bool _loading = false;
+  Offering? _offering;
+  Package? _selectedPackage;
+  bool _isLoading = true;
+  bool _isPurchasing = false;
   String? _error;
-  String _selectedTier = 'together';
 
   @override
   void initState() {
     super.initState();
     AnalyticsService.paywallViewed('upgrade_button');
+    _loadOffering();
   }
 
-  Future<void> _purchase(Package package) async {
-    setState(() { _loading = true; _error = null; });
+  Future<void> _loadOffering() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      final info = await RevenueCatService.purchase(package);
-      if (info.entitlements.active.isNotEmpty) {
-        await AnalyticsService.subscriptionPurchased(_selectedTier);
-        if (mounted) context.go('/home');
+      final offering = await RevenueCatService.getCurrentOffering();
+      if (offering == null) {
+        setState(() {
+          _error = 'Subscriptions are not available right now. Please try again later.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final annual = offering.annual ??
+          offering.availablePackages.firstWhere(
+            (p) => p.packageType == PackageType.annual,
+            orElse: () => offering.availablePackages.first,
+          );
+
+      setState(() {
+        _offering = offering;
+        _selectedPackage = annual;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Could not load subscription options.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _purchase() async {
+    if (_selectedPackage == null) return;
+
+    setState(() => _isPurchasing = true);
+
+    try {
+      final success = await RevenueCatService.purchasePackage(_selectedPackage!);
+
+      if (success && mounted) {
+        await AnalyticsService.subscriptionPurchased(
+          _selectedPackage!.packageType == PackageType.annual ? 'together_yearly' : 'together_monthly',
+        );
+        ref.invalidate(subscriptionTierProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Welcome to TwoWallet Together!'),
+            backgroundColor: Color(0xFF1D9E75),
+          ),
+        );
+        context.go('/home');
+      } else if (mounted) {
+        setState(() => _isPurchasing = false);
       }
     } catch (e) {
-      setState(() => _error = 'Purchase failed — please try again');
-    } finally {
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = 'Purchase failed. Please try again.';
+          _isPurchasing = false;
+        });
+      }
     }
   }
 
   Future<void> _restore() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() => _isPurchasing = true);
+
     try {
-      final info = await RevenueCatService.restorePurchases();
-      if (info.entitlements.active.isNotEmpty) {
-        await AnalyticsService.subscriptionRestored();
-        if (mounted) {
+      final hasAccess = await RevenueCatService.restorePurchases();
+
+      if (mounted) {
+        if (hasAccess) {
+          await AnalyticsService.subscriptionRestored();
+          ref.invalidate(subscriptionTierProvider);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Purchases restored')),
+            const SnackBar(
+              content: Text('Subscription restored!'),
+              backgroundColor: Color(0xFF1D9E75),
+            ),
           );
           context.go('/home');
+        } else {
+          setState(() {
+            _error = 'No active subscription found to restore.';
+            _isPurchasing = false;
+          });
         }
-      } else {
-        setState(() => _error = 'No purchases found to restore');
       }
     } catch (e) {
-      setState(() => _error = 'Restore failed — please try again');
-    } finally {
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = 'Restore failed.';
+          _isPurchasing = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final packagesAsync = ref.watch(packagesProvider);
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: Stack(
           children: [
-            // Header
-            Text(
-              'Upgrade TwoWallet',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
+            if (widget.canDismiss)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.black54),
+                  onPressed: () => context.pop(),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'One subscription covers both partners.',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 32),
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 32),
 
-            // Tier selector
-            _TierCard(
-              title: 'Together',
-              price: '\$12/mo or \$99/yr',
-              color: AppColors.ours,
-              lightColor: AppColors.oursLight,
-              selected: _selectedTier == 'together',
-              onTap: () => setState(() => _selectedTier = 'together'),
-              features: [
-                'Unlimited bank sync via Basiq',
-                'Auto transaction categorisation',
-                'Fair-split with bank sync',
-                'Unlimited shared goals',
-                'Full Money Date — AI talking points',
-                'Subscription audit',
-                'CSV export',
-              ],
-            ),
-            const SizedBox(height: 12),
-            _TierCard(
-              title: 'Together+',
-              price: '\$18/mo or \$149/yr',
-              color: AppColors.mine,
-              lightColor: AppColors.mineLight,
-              selected: _selectedTier == 'together_plus',
-              onTap: () => setState(() => _selectedTier = 'together_plus'),
-              features: [
-                'Everything in Together',
-                'Income ratio re-balancer',
-                'Cash flow forecast 30/90 day',
-                'HECS/HELP debt tracker',
-                'Super balance tracking',
-                'Bill calendar',
-                'Priority support',
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Purchase button
-            packagesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => _PurchaseButton(
-                label: 'Start 30-day free trial',
-                color: AppColors.ours,
-                loading: _loading,
-                onTap: () {},
-              ),
-              data: (packages) {
-                final filtered = packages.where((p) {
-                  if (_selectedTier == 'together') {
-                    return p.storeProduct.identifier
-                        .contains('together') &&
-                        !p.storeProduct.identifier.contains('plus');
-                  }
-                  return p.storeProduct.identifier.contains('plus');
-                }).toList();
-
-                final package = filtered.isNotEmpty ? filtered.first : null;
-
-                return _PurchaseButton(
-                  label: 'Start 30-day free trial',
-                  color: _selectedTier == 'together'
-                      ? AppColors.ours
-                      : AppColors.mine,
-                  loading: _loading,
-                  onTap: package != null ? () => _purchase(package) : null,
-                );
-              },
-            ),
-
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center),
-            ],
-
-            const SizedBox(height: 16),
-            Center(
-              child: TextButton(
-                onPressed: _loading ? null : _restore,
-                child: Text('Restore purchases',
-                    style: TextStyle(color: Colors.grey.shade500)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                'Cancel anytime. Billed in AUD. Both partners included.',
-                style:
-                    TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TierCard extends StatelessWidget {
-  final String title;
-  final String price;
-  final Color color;
-  final Color lightColor;
-  final bool selected;
-  final VoidCallback onTap;
-  final List<String> features;
-
-  const _TierCard({
-    required this.title,
-    required this.price,
-    required this.color,
-    required this.lightColor,
-    required this.selected,
-    required this.onTap,
-    required this.features,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: selected ? lightColor : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? color : Colors.grey.shade200,
-            width: selected ? 2 : 0.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? color : Colors.black87)),
-                if (selected)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(20),
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1D9E75),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.favorite, color: Colors.white, size: 40),
                     ),
-                    child: const Text('Selected',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500)),
                   ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(price,
-                style: TextStyle(
-                    fontSize: 14, color: Colors.grey.shade600)),
-            const SizedBox(height: 12),
-            ...features.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
+
+                  const SizedBox(height: 24),
+
+                  Text(
+                    'TwoWallet Together',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'Manage money together, beautifully.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: Colors.black54,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  const _FeatureRow(text: 'Track all three buckets: Mine, Ours, Theirs'),
+                  const _FeatureRow(text: 'Auto-calculated fair split based on income'),
+                  const _FeatureRow(text: 'Weekly Money Date with AI insights'),
+                  const _FeatureRow(text: 'Shared goals and progress tracking'),
+                  const _FeatureRow(text: 'Private Pocket for surprises'),
+                  const _FeatureRow(text: 'Unlimited transactions'),
+
+                  const SizedBox(height: 32),
+
+                  if (_isLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(color: Color(0xFF1D9E75)),
+                      ),
+                    )
+                  else if (_error != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(color: Colors.red.shade900, fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_offering != null)
+                    Column(
+                      children: _offering!.availablePackages.map((package) {
+                        final isSelected = _selectedPackage?.identifier == package.identifier;
+                        final isAnnual = package.packageType == PackageType.annual;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _PackageOption(
+                            package: package,
+                            isSelected: isSelected,
+                            isBestValue: isAnnual,
+                            onTap: () => setState(() => _selectedPackage = package),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                  const SizedBox(height: 24),
+
+                  FilledButton(
+                    onPressed: _isPurchasing || _selectedPackage == null ? null : _purchase,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D9E75),
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isPurchasing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(
+                            'Subscribe',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  TextButton(
+                    onPressed: _isPurchasing ? null : _restore,
+                    child: Text(
+                      'Restore purchases',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: Colors.black45,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle_outline,
-                          size: 16, color: color),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(f,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade700)),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'Privacy Policy',
+                          style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                        ),
+                      ),
+                      const Text('·', style: TextStyle(color: Colors.black45)),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'Terms of Service',
+                          style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                        ),
                       ),
                     ],
                   ),
-                )),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -290,37 +325,136 @@ class _TierCard extends StatelessWidget {
   }
 }
 
-class _PurchaseButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool loading;
-  final VoidCallback? onTap;
+class _FeatureRow extends StatelessWidget {
+  final String text;
+  const _FeatureRow({required this.text});
 
-  const _PurchaseButton({
-    required this.label,
-    required this.color,
-    required this.loading,
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1D9E75),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, color: Colors.white, size: 14),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackageOption extends StatelessWidget {
+  final Package package;
+  final bool isSelected;
+  final bool isBestValue;
+  final VoidCallback onTap;
+
+  const _PackageOption({
+    required this.package,
+    required this.isSelected,
+    required this.isBestValue,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: loading ? null : onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final price = package.storeProduct.priceString;
+    final period = package.packageType == PackageType.annual ? 'year' : 'month';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1D9E75).withOpacity(0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1D9E75) : Colors.grey.shade200,
+            width: isSelected ? 2 : 1,
           ),
         ),
-        child: loading
-            ? const CircularProgressIndicator(color: Colors.white)
-            : Text(label,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600)),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF1D9E75) : Colors.grey.shade400,
+                  width: 2,
+                ),
+                color: isSelected ? const Color(0xFF1D9E75) : Colors.transparent,
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        package.packageType == PackageType.annual ? 'Yearly' : 'Monthly',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (isBestValue) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1D9E75),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'BEST VALUE',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$price / $period',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

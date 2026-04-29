@@ -112,6 +112,13 @@ class HouseholdRepository {
         .eq('status', 'active');
   }
 
+  Future<void> updateDisplayName(String partnerId, String displayName) async {
+    await _client
+        .from('partners')
+        .update({'display_name': displayName})
+        .eq('id', partnerId);
+  }
+
   Future<void> updateMoneyDateSchedule({
     required int day,
     required int hour,

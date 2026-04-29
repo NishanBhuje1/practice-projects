@@ -118,7 +118,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/notification-settings',
           builder: (_, __) => const NotificationSettingsScreen()),
-      GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
+      GoRoute(
+        path: '/paywall',
+        builder: (context, state) {
+          final canDismiss = state.uri.queryParameters['dismiss'] != 'false';
+          return PaywallScreen(canDismiss: canDismiss);
+        },
+      ),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
     ],
   );

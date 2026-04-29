@@ -1,8 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class RevenueCatService {
-  static const _apiKey = String.fromEnvironment('REVENUECAT_API_KEY');
   static bool _isConfigured = false;
 
   // Your product IDs — match these exactly in App Store / Play Store
@@ -18,8 +18,13 @@ class RevenueCatService {
   /// Initializes RevenueCat with the provided Supabase User ID.
   static Future<void> init(String? userId) async {
     try {
-      if (_apiKey.isEmpty) {
-        debugPrint('RevenueCat API key not set — skipping init');
+      const iosKey = String.fromEnvironment('RC_API_KEY_IOS');
+      const androidKey = String.fromEnvironment('RC_API_KEY_ANDROID');
+
+      final apiKey = Platform.isIOS ? iosKey : androidKey;
+
+      if (apiKey.isEmpty) {
+        debugPrint('RevenueCat API key not set for ${Platform.operatingSystem}');
         _isConfigured = false;
         return;
       }
@@ -27,9 +32,10 @@ class RevenueCatService {
       await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.warn);
 
       await Purchases.configure(
-        PurchasesConfiguration(_apiKey)..appUserID = userId,
+        PurchasesConfiguration(apiKey)..appUserID = userId,
       );
       _isConfigured = true;
+      debugPrint('RevenueCat configured for ${Platform.operatingSystem}');
     } catch (e) {
       debugPrint('RevenueCat init error: $e — app will work without subscriptions');
       _isConfigured = false;
@@ -67,11 +73,45 @@ class RevenueCatService {
     }
   }
 
+  static Future<Offering?> getCurrentOffering() async {
+    try {
+      final offerings = await Purchases.getOfferings();
+      return offerings.current;
+    } catch (e) {
+      debugPrint('Failed to get offering: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> purchasePackage(Package package) async {
+    if (!_isConfigured) return false;
+    try {
+      final result = await Purchases.purchasePackage(package);
+      return result.entitlements.active.isNotEmpty;
+    } on PurchasesErrorCode catch (e) {
+      if (e == PurchasesErrorCode.purchaseCancelledError) {
+        debugPrint('Purchase cancelled by user');
+      } else {
+        debugPrint('Purchase failed: $e');
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Purchase error: $e');
+      return false;
+    }
+  }
+
   static Future<CustomerInfo> purchase(Package package) async {
     return Purchases.purchasePackage(package);
   }
 
-  static Future<CustomerInfo> restorePurchases() async {
-    return Purchases.restorePurchases();
+  static Future<bool> restorePurchases() async {
+    try {
+      final info = await Purchases.restorePurchases();
+      return info.entitlements.active.isNotEmpty;
+    } catch (e) {
+      debugPrint('Restore failed: $e');
+      return false;
+    }
   }
 }
