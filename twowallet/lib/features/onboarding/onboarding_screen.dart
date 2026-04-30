@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:twowallet/core/utils/auth_error_messages.dart';
 import 'package:twowallet/shared/providers/auth_provider.dart';
+import '../../data/services/analytics_service.dart';
 import 'onboarding_controller.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final int _totalPages = 3;
   bool _loading = false;
 
+  static const _pageNames = ['vision', 'features', 'auth'];
+
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
       _controller.nextPage(
@@ -30,6 +33,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  void _onPageChanged(int i) {
+    setState(() => _currentPage = i);
+    AnalyticsService.onboardingScreenViewed(_pageNames[i]);
+  }
+
   Future<void> _complete() async {
     await OnboardingController.markOnboardingComplete();
     await OnboardingController.markSetupComplete();
@@ -37,17 +45,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _goToSignup() async {
+    await AnalyticsService.onboardingCompleted();
     await OnboardingController.markOnboardingComplete();
     if (mounted) context.go('/onboarding/signup');
   }
 
   Future<void> _goToSignin() async {
+    await AnalyticsService.onboardingCompleted();
     await OnboardingController.markOnboardingComplete();
     if (mounted) context.go('/signin');
   }
 
   Future<void> _signInWithGoogle() async {
     try {
+      await AnalyticsService.onboardingCompleted();
       await ref.read(authServiceProvider).signInWithGoogle();
       await OnboardingController.markOnboardingComplete();
       if (mounted) context.go('/home');
@@ -64,6 +75,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_loading) return;
     try {
       setState(() => _loading = true);
+      await AnalyticsService.onboardingCompleted();
       await ref.read(authServiceProvider).signInWithApple();
       await OnboardingController.markOnboardingComplete();
       if (mounted) context.go('/home');
@@ -118,7 +130,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Expanded(
               child: PageView(
                 controller: _controller,
-                onPageChanged: (i) => setState(() => _currentPage = i),
+                onPageChanged: _onPageChanged,
                 children: [
                   _Page1(),
                   _Page2(),

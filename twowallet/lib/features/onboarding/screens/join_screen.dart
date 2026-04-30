@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/utils/auth_error_messages.dart';
+import '../../../data/services/analytics_service.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../features/home/providers/home_provider.dart';
 import '../../../features/fair_split/providers/fair_split_provider.dart';
@@ -22,6 +23,12 @@ class JoinScreen extends ConsumerStatefulWidget {
 class _JoinScreenState extends ConsumerState<JoinScreen> {
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.partnerInviteReceived();
+  }
 
   Future<void> _joinHousehold() async {
     if (widget.householdId == null || widget.householdId!.isEmpty) {
@@ -50,6 +57,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
       await OnboardingController.markOnboardingComplete();
       await OnboardingController.markSetupComplete();
+      await AnalyticsService.partnerInviteAccepted();
+      await AnalyticsService.householdConnected();
 
       if (mounted) {
         // Invalidate all household-dependent providers so the home screen
@@ -98,6 +107,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       } else {
         friendlyMessage = friendlyAuthError(e);
       }
+      await AnalyticsService.partnerInviteFailed(friendlyMessage);
       if (mounted) {
         setState(() {
           _error = friendlyMessage;
@@ -105,6 +115,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         });
       }
     } catch (e) {
+      await AnalyticsService.partnerInviteFailed(e.toString());
       if (mounted) {
         setState(() {
           _error = 'Something went wrong. Please try again.';

@@ -146,7 +146,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
       );
 
-      await AnalyticsService.transactionAdded(_bucket, _category);
+      await AnalyticsService.transactionAdded(
+        bucket: _bucket,
+        isIncome: _isIncome,
+        amount: _amount,
+      );
 
       ref.invalidate(spendingTransactionsProvider);
       ref.invalidate(recentTransactionsProvider);

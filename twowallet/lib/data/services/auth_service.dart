@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -88,14 +89,26 @@ class AuthService {
       await prefs.setBool('hasSeenOnboarding', true);
       await prefs.setBool('hasCompletedSetup', true);
 
-      await AnalyticsService.signupCompleted('partner_b');
-      await AnalyticsService.partnerJoined();
-      await AnalyticsService.identify(response.user!.id);
+      await AnalyticsService.signupCompleted('email');
+      await AnalyticsService.householdConnected();
+      await AnalyticsService.identify(response.user!.id, properties: {
+        'signup_method': 'email',
+        'signup_date': DateTime.now().toIso8601String(),
+        'household_role': 'partner_b',
+        'is_grandfathered': false,
+        'platform': Platform.isIOS ? 'ios' : 'android',
+      });
       return pendingHouseholdId;
     }
 
-    await AnalyticsService.signupCompleted('partner_a');
-    await AnalyticsService.identify(response.user!.id);
+    await AnalyticsService.signupCompleted('email');
+    await AnalyticsService.identify(response.user!.id, properties: {
+      'signup_method': 'email',
+      'signup_date': DateTime.now().toIso8601String(),
+      'household_role': 'partner_a',
+      'is_grandfathered': false,
+      'platform': Platform.isIOS ? 'ios' : 'android',
+    });
     return newHouseholdId;
   }
 
@@ -149,26 +162,39 @@ class AuthService {
               'user_id', response.user!.id);
     }
 
-    await AnalyticsService.signupCompleted('partner_b');
-    await AnalyticsService.partnerJoined();
-    await AnalyticsService.identify(response.user!.id);
+    await AnalyticsService.signupCompleted('email');
+    await AnalyticsService.householdConnected();
+    await AnalyticsService.identify(response.user!.id, properties: {
+      'signup_method': 'email',
+      'signup_date': DateTime.now().toIso8601String(),
+      'household_role': 'partner_b',
+      'is_grandfathered': false,
+      'platform': Platform.isIOS ? 'ios' : 'android',
+    });
   }
 
   Future<void> signIn({
-  required String email,
-  required String password,
-}) async {
-  final response = await _client.auth.signInWithPassword(
-    email: email,
-    password: password,
-  );
-  if (response.user != null) {
-    await RevenueCatService.init(response.user!.id);
-    await AnalyticsService.identify(response.user!.id);
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      if (response.user != null) {
+        await RevenueCatService.init(response.user!.id);
+        await AnalyticsService.signinCompleted('email');
+        await AnalyticsService.identify(response.user!.id);
+      }
+    } catch (e) {
+      await AnalyticsService.signinFailed('email', e.toString());
+      rethrow;
+    }
   }
-}
 
   Future<void> signOut() async {
+    await AnalyticsService.reset();
     await _client.auth.signOut();
   }
 
@@ -230,12 +256,32 @@ class AuthService {
         response.user!.email?.split('@')[0] ??
         'Partner';
 
+    final existingPartner = await _client
+        .from('partners')
+        .select('id')
+        .eq('user_id', response.user!.id)
+        .maybeSingle();
+    final isNewUser = existingPartner == null;
+
     await RevenueCatService.init(response.user!.id);
-    await AnalyticsService.identify(response.user!.id);
     await _ensureHouseholdExists(
       userId: response.user!.id,
       displayName: fullName,
     );
+
+    if (isNewUser) {
+      await AnalyticsService.signupCompleted('google');
+      await AnalyticsService.identify(response.user!.id, properties: {
+        'signup_method': 'google',
+        'signup_date': DateTime.now().toIso8601String(),
+        'household_role': 'partner_a',
+        'is_grandfathered': false,
+        'platform': Platform.isIOS ? 'ios' : 'android',
+      });
+    } else {
+      await AnalyticsService.signinCompleted('google');
+      await AnalyticsService.identify(response.user!.id);
+    }
   }
 
   // Called from main.dart after the OAuth deep-link callback resolves
@@ -260,7 +306,6 @@ class AuthService {
 
     await RevenueCatService.init(user.id);
     await AnalyticsService.identify(user.id);
-
     await _ensureHouseholdExists(
       userId: user.id,
       displayName: fullName ?? user.email?.split('@')[0] ?? 'Partner',
@@ -304,12 +349,32 @@ class AuthService {
     }
     final firstName = fullName.split(RegExp(r'[\s_]')).first;
 
+    final existingPartner = await _client
+        .from('partners')
+        .select('id')
+        .eq('user_id', response.user!.id)
+        .maybeSingle();
+    final isNewUser = existingPartner == null;
+
     await RevenueCatService.init(response.user!.id);
-    await AnalyticsService.identify(response.user!.id);
     await _ensureHouseholdExists(
       userId: response.user!.id,
       displayName: firstName,
     );
+
+    if (isNewUser) {
+      await AnalyticsService.signupCompleted('apple');
+      await AnalyticsService.identify(response.user!.id, properties: {
+        'signup_method': 'apple',
+        'signup_date': DateTime.now().toIso8601String(),
+        'household_role': 'partner_a',
+        'is_grandfathered': false,
+        'platform': 'ios',
+      });
+    } else {
+      await AnalyticsService.signinCompleted('apple');
+      await AnalyticsService.identify(response.user!.id);
+    }
   }
 
   // Resolves the best available display name to a first name only.

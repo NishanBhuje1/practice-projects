@@ -703,6 +703,7 @@ class _AddContributionSheetState
       amountAud: amount,
       notes: _notesController.text.isEmpty ? null : _notesController.text,
     );
+    await AnalyticsService.goalContributionMade(amount);
     if (mounted) Navigator.pop(context);
   }
 
@@ -800,7 +801,7 @@ class _CreateGoalSheetState extends ConsumerState<_CreateGoalSheet> {
           ? _targetDate!.toIso8601String().split('T')[0]
           : null,
     );
-    await AnalyticsService.goalCreated();
+    await AnalyticsService.goalCreated(targetAmount: amount);
     if (mounted) Navigator.pop(context);
   }
 

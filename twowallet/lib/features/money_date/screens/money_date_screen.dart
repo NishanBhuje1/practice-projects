@@ -28,11 +28,12 @@ class MoneyDateScreen extends ConsumerStatefulWidget {
 
 class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
   bool _premiumChecked = false;
+  bool _aiPromptTracked = false;
 
   @override
   void initState() {
     super.initState();
-    AnalyticsService.moneyDateOpened();
+    AnalyticsService.moneyDateStarted();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPremiumAccess());
   }
 
@@ -84,17 +85,23 @@ class _MoneyDateScreenState extends ConsumerState<MoneyDateScreen> {
         error: (e, _) => e is HouseholdNotReadyException
             ? _WaitingForPartner()
             : _InsightsError(onRetry: () => ref.invalidate(moneyDateInsightsProvider(weekKey))),
-        data: (insights) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _WeekInNumbers(insights: insights),
-            const SizedBox(height: 16),
-            _TalkingPoints(insights: insights),
-            const SizedBox(height: 16),
-            _DecisionPrompt(insights: insights),
-            const SizedBox(height: 32),
-          ],
-        ),
+        data: (insights) {
+          if (!_aiPromptTracked) {
+            _aiPromptTracked = true;
+            AnalyticsService.moneyDateAiPromptUsed();
+          }
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _WeekInNumbers(insights: insights),
+              const SizedBox(height: 16),
+              _TalkingPoints(insights: insights),
+              const SizedBox(height: 16),
+              _DecisionPrompt(insights: insights),
+              const SizedBox(height: 32),
+            ],
+          );
+        },
       ),
     );
   }
@@ -399,6 +406,9 @@ class _TalkingPointsState extends ConsumerState<_TalkingPoints> {
                         _checked.remove(i);
                       } else {
                         _checked.add(i);
+                        if (_checked.length == widget.insights.talkingPoints.length) {
+                          AnalyticsService.moneyDateCompleted();
+                        }
                       }
                     }),
                     child: Row(

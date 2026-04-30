@@ -1,6 +1,7 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants/supabase_config.dart';
 import 'app.dart';
@@ -36,6 +37,15 @@ void main() async {
 
   await NotificationService.init();
   await AnalyticsService.init();
+
+  final prefs = await SharedPreferences.getInstance();
+  final hasOpenedBefore = prefs.getBool('app_first_open_tracked') ?? false;
+  if (!hasOpenedBefore) {
+    await prefs.setBool('app_first_open_tracked', true);
+    await AnalyticsService.appFirstOpen();
+  } else {
+    await AnalyticsService.appOpened();
+  }
 
   final user = Supabase.instance.client.auth.currentUser;
   if (user != null) {

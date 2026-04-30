@@ -11,11 +11,13 @@ import '../../../shared/providers/subscription_provider.dart';
 class PaywallScreen extends ConsumerStatefulWidget {
   final bool canDismiss;
   final bool isWinBack;
+  final String trigger;
 
   const PaywallScreen({
     super.key,
     this.canDismiss = true,
     this.isWinBack = false,
+    this.trigger = 'settings',
   });
 
   @override
@@ -29,10 +31,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   bool _isPurchasing = false;
   String? _error;
 
+  String get _trigger => widget.isWinBack ? 'winback' : widget.trigger;
+
   @override
   void initState() {
     super.initState();
-    AnalyticsService.paywallViewed('upgrade_button');
+    AnalyticsService.paywallViewed(_trigger);
     _loadOffering();
   }
 
@@ -75,18 +79,19 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Future<void> _purchase() async {
     if (_selectedPackage == null) return;
 
+    final packageType = _selectedPackage!.packageType == PackageType.annual
+        ? 'annual'
+        : 'monthly';
+
     setState(() => _isPurchasing = true);
+    await AnalyticsService.subscriptionPurchaseAttempted(packageType);
 
     try {
       final success =
           await RevenueCatService.purchasePackage(_selectedPackage!);
 
       if (success && mounted) {
-        await AnalyticsService.subscriptionPurchased(
-          _selectedPackage!.packageType == PackageType.annual
-              ? 'together_yearly'
-              : 'together_monthly',
-        );
+        await AnalyticsService.subscriptionPurchaseSucceeded(packageType);
         ref.invalidate(subscriptionStatusProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -99,6 +104,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         setState(() => _isPurchasing = false);
       }
     } catch (e) {
+      await AnalyticsService.subscriptionPurchaseFailed(packageType, e.toString());
       if (mounted) {
         setState(() {
           _error = 'Purchase failed. Please try again.';
@@ -159,7 +165,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 right: 8,
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.black54),
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    AnalyticsService.paywallDismissed(_trigger);
+                    context.pop();
+                  },
                 ),
               ),
             SingleChildScrollView(
@@ -268,8 +277,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                             package: package,
                             isSelected: isSelected,
                             isBestValue: isAnnual,
-                            onTap: () =>
-                                setState(() => _selectedPackage = package),
+                            onTap: () {
+                            final pkgType = package.packageType == PackageType.annual
+                                ? 'annual'
+                                : 'monthly';
+                            AnalyticsService.paywallPackageSelected(pkgType);
+                            setState(() => _selectedPackage = package);
+                          },
                           ),
                         );
                       }).toList(),

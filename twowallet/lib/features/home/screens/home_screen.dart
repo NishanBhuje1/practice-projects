@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/models/partner.dart';
+import '../../../data/services/analytics_service.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../shared/providers/subscription_provider.dart';
 import '../providers/home_provider.dart';
@@ -862,7 +863,7 @@ class _TrialBanner extends ConsumerWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => context.push('/paywall'),
+                onPressed: () => context.push('/paywall?trigger=banner'),
                 style: TextButton.styleFrom(
                   backgroundColor: Colors.white,
                   padding:
@@ -911,6 +912,10 @@ class _WinBackCheckState extends ConsumerState<_WinBackCheck> {
       // Schedule trial notifications on every fresh home load.
       await NotificationService.scheduleTrialNotifications(sub);
 
+      if (sub.status == 'trial' && sub.daysRemaining <= 7) {
+        await AnalyticsService.trialDayWarningShown(sub.daysRemaining);
+      }
+
       if (sub.status != 'expired') return;
 
       final prefs = await SharedPreferences.getInstance();
@@ -919,7 +924,8 @@ class _WinBackCheckState extends ConsumerState<_WinBackCheck> {
       if (lastShown == today) return;
 
       await prefs.setString('winback_last_shown', today);
-      if (mounted) context.push('/paywall?winback=true');
+      await AnalyticsService.winbackPaywallShown();
+      if (mounted) context.push('/paywall?winback=true&trigger=winback');
     } catch (_) {}
   }
 

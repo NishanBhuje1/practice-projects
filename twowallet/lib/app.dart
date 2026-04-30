@@ -123,7 +123,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final canDismiss = state.uri.queryParameters['dismiss'] != 'false';
           final isWinBack = state.uri.queryParameters['winback'] == 'true';
-          return PaywallScreen(canDismiss: canDismiss, isWinBack: isWinBack);
+          final trigger = state.uri.queryParameters['trigger'] ??
+              (isWinBack ? 'winback' : 'settings');
+          return PaywallScreen(
+            canDismiss: canDismiss,
+            isWinBack: isWinBack,
+            trigger: trigger,
+          );
         },
       ),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),

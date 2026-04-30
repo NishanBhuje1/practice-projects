@@ -20,7 +20,7 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
 
   Future<void> _shareLink(String householdId) async {
     final link = AuthService().generateInviteLink(householdId);
-    AnalyticsService.partnerInvited();
+    AnalyticsService.partnerInviteLinkShared();
     try {
       final box = context.findRenderObject() as RenderBox?;
       final sharePositionOrigin =
@@ -41,6 +41,7 @@ class _InvitePartnerCardState extends ConsumerState<InvitePartnerCard> {
 
   Future<void> _copyLink(String householdId) async {
     final link = AuthService().generateInviteLink(householdId);
+    AnalyticsService.partnerInviteLinkCopied();
     await Clipboard.setData(ClipboardData(text: link));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
