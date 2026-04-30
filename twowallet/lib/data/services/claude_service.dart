@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/transaction.dart';
 import '../models/partner.dart';
@@ -19,7 +20,7 @@ class MoneyDateInsights {
 class ClaudeService {
   static const _model = 'claude-haiku-4-5-20251001';
   static const _apiUrl = 'https://api.anthropic.com/v1/messages';
-  static const _apiKey = String.fromEnvironment('CLAUDE_API_KEY');
+  static String get _apiKey => dotenv.env['CLAUDE_API_KEY'] ?? '';
 
   Future<MoneyDateInsights> generateMoneyDateInsights({
     required List<Transaction> weekTransactions,

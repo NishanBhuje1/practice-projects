@@ -45,5 +45,11 @@ app.*.map.json
 /android/app/release
 .vscode/launch.json
 
-# Local dart-define secrets — never commit
+# Environment files — contain secrets, never commit
+.env
 dart-defines.json
+run.ps1
+build-android.ps1
+build-ios.sh
+
+# .env.example IS committed — it's a template for new developers

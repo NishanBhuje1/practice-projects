@@ -1,13 +1,11 @@
-class SupabaseConfig {
-  static const url = String.fromEnvironment('SUPABASE_URL');
-  static const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-  /// Call once in main() before Supabase.initialize().
-  /// Throws at startup — not silently at runtime — if either key is missing.
+class SupabaseConfig {
+  static String get url => dotenv.env['SUPABASE_URL'] ?? '';
+  static String get anonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+
   static void assertConfigured() {
-    assert(url.isNotEmpty,
-        'SUPABASE_URL is not set. Pass --dart-define=SUPABASE_URL=<value> at build time.');
-    assert(anonKey.isNotEmpty,
-        'SUPABASE_ANON_KEY is not set. Pass --dart-define=SUPABASE_ANON_KEY=<value> at build time.');
+    assert(url.isNotEmpty, 'SUPABASE_URL is not set in .env');
+    assert(anonKey.isNotEmpty, 'SUPABASE_ANON_KEY is not set in .env');
   }
 }

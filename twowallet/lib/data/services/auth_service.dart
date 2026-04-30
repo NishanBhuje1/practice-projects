@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:crypto/crypto.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -221,8 +222,8 @@ class AuthService {
 
   // Google Sign In — native sign in via google_sign_in (no browser redirect)
   Future<void> signInWithGoogle() async {
-    const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
-    const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
+    final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'] ?? '';
 
     final googleSignIn = GoogleSignIn(
       clientId: iosClientId.isNotEmpty ? iosClientId : null,

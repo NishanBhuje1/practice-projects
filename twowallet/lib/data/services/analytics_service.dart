@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 class AnalyticsService {
   static final _posthog = Posthog();
-  static const _apiKey = String.fromEnvironment('POSTHOG_API_KEY');
+  static String get _apiKey => dotenv.env['POSTHOG_API_KEY'] ?? '';
 
   static Future<void> init() async {
     if (_apiKey.isEmpty) {
@@ -13,11 +14,11 @@ class AnalyticsService {
 
     final config = PostHogConfig(_apiKey)
       ..host = 'https://us.i.posthog.com'
-      ..debug = true
+      ..debug = false
       ..captureApplicationLifecycleEvents = true;
 
     await _posthog.setup(config);
-    debugPrint('PostHog initialized — host: ${config.host}, key length: ${_apiKey.length}');
+    debugPrint('PostHog initialized — host: ${config.host}');
   }
 
   // ===== USER IDENTIFICATION =====
@@ -116,6 +117,7 @@ class AnalyticsService {
 
   static Future<void> fairSplitViewed() => _capture('fair_split_viewed');
   static Future<void> fairSplitIncomeUpdated() => _capture('fair_split_income_updated');
+  static Future<void> settleUpTapped() => _capture('settle_up_tapped');
 
   static Future<void> privatePocketUsed() => _capture('private_pocket_used');
 

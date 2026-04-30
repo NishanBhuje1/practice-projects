@@ -64,7 +64,7 @@ class InviteScreen extends ConsumerWidget {
                 icon: const Icon(Icons.share),
                 label: const Text('Share invite link'),
                 onPressed: () async {
-                  AnalyticsService.partnerInvited();
+                  AnalyticsService.partnerInvited(method: 'link');
                   try {
                     final box = context.findRenderObject() as RenderBox?;
                     final sharePositionOrigin = box != null

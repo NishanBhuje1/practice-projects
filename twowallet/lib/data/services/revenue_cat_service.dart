@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class RevenueCatService {
@@ -18,8 +19,8 @@ class RevenueCatService {
   /// Initializes RevenueCat with the provided Supabase User ID.
   static Future<void> init(String? userId) async {
     try {
-      const iosKey = String.fromEnvironment('RC_API_KEY_IOS');
-      const androidKey = String.fromEnvironment('RC_API_KEY_ANDROID');
+      final iosKey = dotenv.env['RC_API_KEY_IOS'] ?? '';
+      final androidKey = dotenv.env['RC_API_KEY_ANDROID'] ?? '';
 
       final apiKey = Platform.isIOS ? iosKey : androidKey;
 
