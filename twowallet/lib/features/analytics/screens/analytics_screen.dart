@@ -21,7 +21,7 @@ class AnalyticsScreen extends ConsumerWidget {
       ),
       error: (_, __) => _buildContent(context, ref),
       data: (sub) =>
-          sub.hasAccess ? _buildContent(context, ref) : _buildLocked(context),
+          (sub?.hasAccess ?? false) ? _buildContent(context, ref) : _buildLocked(context),
     );
   }
 

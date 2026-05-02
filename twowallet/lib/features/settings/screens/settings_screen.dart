@@ -607,6 +607,7 @@ class _ManageSubscriptionTile extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (sub) {
+        if (sub == null) return const SizedBox.shrink();
         if (sub.status != 'active') return const SizedBox.shrink();
 
         final manageUrl = Platform.isIOS
