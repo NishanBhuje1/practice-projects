@@ -826,9 +826,21 @@ class _TrialBanner extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (sub) {
-        if (sub.isGrandfathered) return const SizedBox.shrink();
-        if (sub.status != 'trial') return const SizedBox.shrink();
-        if (sub.daysRemaining > 7) return const SizedBox.shrink();
+        debugPrint('🟢 HomeScreen banner check: sub=${sub?.status}, days=${sub?.daysRemaining}, grandfathered=${sub?.isGrandfathered}');
+        if (sub == null) return const SizedBox.shrink();
+        if (sub.isGrandfathered) {
+          debugPrint('🟢 HomeScreen: grandfathered, hiding banner');
+          return const SizedBox.shrink();
+        }
+        if (sub.status != 'trial') {
+          debugPrint('🟢 HomeScreen: status is ${sub.status}, hiding banner');
+          return const SizedBox.shrink();
+        }
+        if (sub.daysRemaining > 7) {
+          debugPrint('🟢 HomeScreen: ${sub.daysRemaining} days remaining > 7, hiding banner');
+          return const SizedBox.shrink();
+        }
+        debugPrint('🟢 HomeScreen: all conditions met, showing banner');
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -908,6 +920,7 @@ class _WinBackCheckState extends ConsumerState<_WinBackCheck> {
     if (!mounted) return;
     try {
       final sub = await ref.read(subscriptionStatusProvider.future);
+      if (sub == null) return;
 
       // Schedule trial notifications on every fresh home load.
       await NotificationService.scheduleTrialNotifications(sub);

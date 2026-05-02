@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -468,12 +469,22 @@ class _SubscriptionTile extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (sub) {
-        if (sub.isGrandfathered) return const SizedBox.shrink();
+        debugPrint('🟡 Settings tile check: status=${sub?.status}, grandfathered=${sub?.isGrandfathered}, days=${sub?.daysRemaining}');
+        if (sub == null) {
+          debugPrint('🟡 Settings: sub is null, hiding tile');
+          return const SizedBox.shrink();
+        }
+        if (sub.isGrandfathered) {
+          debugPrint('🟡 Settings: grandfathered, hiding tile');
+          return const SizedBox.shrink();
+        }
 
         if (sub.status == 'active') {
+          debugPrint('🟡 Settings: showing premium status tile');
           return _PremiumStatusTile(sub: sub);
         }
 
+        debugPrint('🟡 Settings: showing upgrade tile');
         return _UpgradePromptTile(sub: sub);
       },
     );

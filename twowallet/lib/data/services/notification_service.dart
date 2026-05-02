@@ -62,10 +62,10 @@ class NotificationService {
       SubscriptionStatus sub) async {
     await cancelTrialNotifications();
 
-    if (sub.trialEndDate == null) return;
+    if (sub.trialEndsAt == null) return;
 
     final now = tz.TZDateTime.now(tz.local);
-    final trialEnd = tz.TZDateTime.from(sub.trialEndDate!, tz.local);
+    final trialEnd = tz.TZDateTime.from(sub.trialEndsAt!, tz.local);
 
     final threeDaysBefore = trialEnd.subtract(const Duration(days: 3));
     if (threeDaysBefore.isAfter(now)) {

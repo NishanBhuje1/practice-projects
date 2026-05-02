@@ -1,88 +1,77 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/services/revenue_cat_service.dart';
-import '../../shared/providers/repo_providers.dart';
-
-// Households created before this date are grandfathered (all existing users).
-const _grandfatherCutoff = '2026-05-01';
-const _trialDays = 40;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubscriptionStatus {
-  final String status; // 'grandfathered' | 'trial' | 'active' | 'expired'
-  final bool hasAccess;
+  final String status; // 'trial', 'active', 'grandfathered', 'expired'
+  final bool isGrandfathered;
+  final DateTime? trialStartedAt;
+  final DateTime? trialEndsAt;
   final int daysRemaining;
-  final DateTime? trialEndDate;
+  final bool hasAccess;
 
-  const SubscriptionStatus({
+  SubscriptionStatus({
     required this.status,
-    required this.hasAccess,
+    required this.isGrandfathered,
+    this.trialStartedAt,
+    this.trialEndsAt,
     required this.daysRemaining,
-    this.trialEndDate,
+    required this.hasAccess,
   });
 
-  bool get isGrandfathered => status == 'grandfathered';
+  factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
+    return SubscriptionStatus(
+      status: json['status'] as String? ?? 'trial',
+      isGrandfathered: json['is_grandfathered'] as bool? ?? false,
+      trialStartedAt: json['trial_started_at'] != null
+          ? DateTime.parse(json['trial_started_at'].toString())
+          : null,
+      trialEndsAt: json['trial_ends_at'] != null
+          ? DateTime.parse(json['trial_ends_at'].toString())
+          : null,
+      daysRemaining: (json['days_remaining'] as num?)?.toInt() ?? 0,
+      hasAccess: json['has_access'] as bool? ?? true,
+    );
+  }
 }
 
-final subscriptionStatusProvider = FutureProvider<SubscriptionStatus>((ref) async {
-  // Active RevenueCat subscription always wins.
-  final hasPremium = await RevenueCatService.hasPremiumEntitlement();
-  if (hasPremium) {
-    return const SubscriptionStatus(
-      status: 'active',
-      hasAccess: true,
-      daysRemaining: 0,
-    );
+final subscriptionStatusProvider = FutureProvider<SubscriptionStatus?>((ref) async {
+  final user = Supabase.instance.client.auth.currentUser;
+  debugPrint('🔵 SubProvider: user=${user?.email}');
+
+  if (user == null) {
+    debugPrint('🔵 SubProvider: no user, returning null');
+    return null;
   }
 
-  try {
-    final household = await ref.read(householdRepoProvider).fetchMyHousehold();
+  final partner = await Supabase.instance.client
+      .from('partners')
+      .select('household_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    if (household == null) {
-      // No household yet — allow access during setup.
-      return const SubscriptionStatus(
-        status: 'trial',
-        hasAccess: true,
-        daysRemaining: _trialDays,
-      );
-    }
+  debugPrint('🔵 SubProvider: partner=$partner');
 
-    final cutoff = DateTime.parse(_grandfatherCutoff);
-    final createdAt = household.createdAt != null
-        ? DateTime.tryParse(household.createdAt!)
-        : null;
-
-    if (createdAt == null || createdAt.isBefore(cutoff)) {
-      return const SubscriptionStatus(
-        status: 'grandfathered',
-        hasAccess: true,
-        daysRemaining: 0,
-      );
-    }
-
-    final trialEnd = createdAt.add(const Duration(days: _trialDays));
-    final now = DateTime.now();
-    final daysLeft = trialEnd.difference(now).inDays;
-
-    if (daysLeft > 0) {
-      return SubscriptionStatus(
-        status: 'trial',
-        hasAccess: true,
-        daysRemaining: daysLeft,
-        trialEndDate: trialEnd,
-      );
-    }
-
-    return SubscriptionStatus(
-      status: 'expired',
-      hasAccess: false,
-      daysRemaining: 0,
-      trialEndDate: trialEnd,
-    );
-  } catch (_) {
-    // Default to trial access if status can't be determined.
-    return const SubscriptionStatus(
-      status: 'trial',
-      hasAccess: true,
-      daysRemaining: _trialDays,
-    );
+  if (partner == null || partner['household_id'] == null) {
+    debugPrint('🔵 SubProvider: no partner record, returning null');
+    return null;
   }
+
+  // SINGLE SOURCE OF TRUTH: the database decides grandfathered/trial/active/expired
+  final response = await Supabase.instance.client
+      .rpc('get_subscription_status', params: {
+    'p_household_id': partner['household_id'],
+  });
+
+  debugPrint('🔵 SubProvider: RPC response=$response');
+
+  if (response is List && response.isNotEmpty) {
+    final status = SubscriptionStatus.fromJson(response.first as Map<String, dynamic>);
+    debugPrint(
+        '🔵 SubProvider: parsed — status=${status.status}, days=${status.daysRemaining}, grandfathered=${status.isGrandfathered}, hasAccess=${status.hasAccess}');
+    return status;
+  }
+
+  debugPrint('🔵 SubProvider: empty response, returning null');
+  return null;
 });
