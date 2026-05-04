@@ -148,6 +148,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final subAsync = ref.watch(subscriptionStatusProvider);
@@ -167,7 +174,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   icon: const Icon(Icons.close, color: Colors.black54),
                   onPressed: () {
                     AnalyticsService.paywallDismissed(_trigger);
-                    context.pop();
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    } else if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/home');
+                    }
                   },
                 ),
               ),
@@ -319,7 +332,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   if (isOnTrial) ...[
                     const SizedBox(height: 8),
                     OutlinedButton(
-                      onPressed: _isPurchasing ? null : () => context.pop(),
+                      onPressed: _isPurchasing ? null : () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/home');
+                        }
+                      },
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 52),
                         side: const BorderSide(color: Color(0xFF1D9E75)),
@@ -360,27 +381,28 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
-                        onPressed: () => launchUrl(
-                          Uri.parse('https://twowallet.app/privacy'),
-                          mode: LaunchMode.externalApplication,
-                        ),
+                        onPressed: () => _launchUrl('https://twowallet.app/privacy'),
                         child: Text(
                           'Privacy Policy',
                           style: GoogleFonts.inter(
-                              fontSize: 11, color: Colors.black54),
+                            fontSize: 12,
+                            color: Colors.black54,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
-                      const Text('·',
-                          style: TextStyle(color: Colors.black45)),
+                      const Text(' • ', style: TextStyle(color: Colors.black45)),
                       TextButton(
-                        onPressed: () => launchUrl(
-                          Uri.parse('https://twowallet.app/terms'),
-                          mode: LaunchMode.externalApplication,
+                        onPressed: () => _launchUrl(
+                          'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
                         ),
                         child: Text(
-                          'Terms of Service',
+                          'Terms of Use',
                           style: GoogleFonts.inter(
-                              fontSize: 11, color: Colors.black54),
+                            fontSize: 12,
+                            color: Colors.black54,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ],

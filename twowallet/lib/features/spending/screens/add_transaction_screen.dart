@@ -12,6 +12,7 @@ import '../../fair_split/providers/income_provider.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/spending_provider.dart';
 import '../../analytics/providers/analytics_provider.dart';
+import '../../../core/utils/premium_gate.dart';
 import '../../../data/services/analytics_service.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -304,7 +305,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           ),
                           value: _isPrivate,
                           activeColor: AppColors.mine,
-                          onChanged: (v) => setState(() => _isPrivate = v),
+                          onChanged: (v) async {
+                            if (v == true) {
+                              final allowed = await requirePremium(
+                                context, ref, featureName: 'Private Pocket');
+                              if (!allowed) return;
+                            }
+                            setState(() => _isPrivate = v);
+                          },
                         ),
                       ),
 

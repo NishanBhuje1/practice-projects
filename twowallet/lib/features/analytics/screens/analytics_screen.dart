@@ -1,10 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/currency_ext.dart';
+import '../../../core/utils/premium_gate.dart';
 import '../../../shared/providers/subscription_provider.dart';
 import '../providers/analytics_provider.dart';
 
@@ -21,11 +21,11 @@ class AnalyticsScreen extends ConsumerWidget {
       ),
       error: (_, __) => _buildContent(context, ref),
       data: (sub) =>
-          (sub?.hasAccess ?? false) ? _buildContent(context, ref) : _buildLocked(context),
+          (sub?.hasAccess ?? false) ? _buildContent(context, ref) : _buildLocked(context, ref),
     );
   }
 
-  Widget _buildLocked(BuildContext context) {
+  Widget _buildLocked(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -76,7 +76,9 @@ class AnalyticsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
               FilledButton(
-                onPressed: () => context.push('/paywall'),
+                onPressed: () async {
+                  await requirePremium(context, ref, featureName: 'Analytics');
+                },
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.ours,
                   minimumSize: const Size(double.infinity, 52),

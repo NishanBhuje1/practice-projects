@@ -15,6 +15,7 @@ import '../providers/income_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/subscription_provider.dart';
 import '../../../data/repositories/household_repository.dart';
+import '../../../core/utils/premium_gate.dart';
 import '../../../data/services/analytics_service.dart';
 
 class FairSplitScreen extends ConsumerStatefulWidget {
@@ -151,7 +152,9 @@ class _FairSplitScreenState extends ConsumerState<FairSplitScreen> {
                   ),
               ] else ...[
                 GestureDetector(
-                  onTap: () => context.push('/paywall'),
+                  onTap: () async {
+                    await requirePremium(context, ref, featureName: 'Auto Fair Split');
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     margin: const EdgeInsets.only(bottom: 16),
